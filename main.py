@@ -3,7 +3,8 @@ import arcade.gui
 from arcade.types import Color
 import random
 from card import Card
-from country import Territory
+from player import Player
+from country import Country
 import math
 import json
 
@@ -147,7 +148,7 @@ class RiskGame(arcade.View):
                 rx, ry = line.split(", ")
                 x = math.floor(float(rx) * self.window.width)
                 y = math.floor(float(ry) * self.window.height)
-                self.territories.append(Territory(i))
+                self.territories.append(Country(i))
                 self.buttons.append(CircleButton(x,y,math.floor(self.window.width/100),"5"))
         
         with open("edges.txt", "r", encoding="utf-8") as file:
