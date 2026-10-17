@@ -1,0 +1,1 @@
+https://commons.wikimedia.org/wiki/File:Risk_game_map.png

@@ -15,7 +15,7 @@ class Card:
         return cls(territory, army, False)
 
     @classmethod
-    def new_deck(cls; keep_wilds: bool = True) -> list["Card"]:
+    def new_deck(cls, keep_wilds: bool = True) -> list["Card"]:
         deck = []
         tc = TERRITORY_COUNT//3
         for army in range(3):

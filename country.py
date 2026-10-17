@@ -2,6 +2,6 @@
 class Territory:
     def __init__(self, i):
         self.i = i
-        self.adj: list[Territory] = []
+        self.adj: list[int] = []
         self.owner: Player | None = None
         self.armies: int = 0
