@@ -1,4 +1,4 @@
-from defs import TERRITORY_COUNT
+TERRITORY_COUNT = 42
 
 class Card:
     def __init__(self, territory: int, army: int, wildcard: bool):

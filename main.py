@@ -192,16 +192,16 @@ class RiskGame(arcade.View):
         """ Called whenever the mouse button is clicked. """
         
         if button == arcade.MOUSE_BUTTON_LEFT:
+            
             for (i, btn) in enumerate(self.buttons):
                 if btn.on_mouse_press():
                     if self.selected == i:
-                        self.selected == None
+                        self.selected = None
                         for btn in self.buttons:
                             btn.set_active(True)
                     else:
                         self.selected = i
                         adj = self.territories[i].adj
-                        print(adj)
                         for (j, btn) in enumerate(self.buttons):
                             if j == i or (j in adj):
                                 btn.set_active(True)
