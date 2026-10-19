@@ -25,3 +25,11 @@ class Card:
             deck.append(Card.new_wildcard())
             deck.append(Card.new_wildcard())
         return deck
+
+    @classmethod
+    def draw(cls, deck: list["Card"], n: int) -> list["Card"]:
+        hand = []
+        for _ in range(n):
+            card = deck.pop()
+            hand.append(card)
+        return hand

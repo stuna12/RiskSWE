@@ -4,8 +4,8 @@ from country import Country
 
 class Player(ABC):
     def __init__(self) -> None:
-        color: int
-        hand: Hand
+        self.color: int
+        self.hand: Hand
     
     def controlled_territories(self, territories: list[Country]) -> list[Country]:
         controlled = []

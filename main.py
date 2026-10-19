@@ -4,7 +4,7 @@ from arcade.types import Color
 import random
 from card import Card
 from player import Player
-from country import Country
+from country import Country, CountryEnum
 import math
 import json
 
@@ -17,7 +17,7 @@ TERRITORY_COUNT = 42
 
 class CircleButton:
     """A custom circular button with text."""
-    def __init__(self, center_x, center_y, radius, text, action = None, 
+    def __init__(self, center_x, center_y, radius, text, action = None,
             normal_color = arcade.color.ORANGE, hover_color = arcade.color.ANTIQUE_RUBY, 
             inactive_color = arcade.color.GRAY):
         self.center_x = center_x
@@ -66,6 +66,7 @@ class CircleButton:
         if self.is_hovered:
             return True
         return False
+        
 
 class MainMenuView(arcade.View):
     """The initial Main Menu screen containing the GUI buttons."""
@@ -140,6 +141,7 @@ class RiskGame(arcade.View):
         self.buttons = []
         self.territories = []
         self.selected = None
+        self.mouse_pos = (0, 0)
     
     
     def setup(self, player_count):
@@ -148,8 +150,14 @@ class RiskGame(arcade.View):
                 rx, ry = line.split(", ")
                 x = math.floor(float(rx) * self.window.width)
                 y = math.floor(float(ry) * self.window.height)
-                self.territories.append(Country(i))
-                self.buttons.append(CircleButton(x,y,math.floor(self.window.width/100),"5"))
+                self.territories.append(Country(type=CountryEnum(i)))
+                self.buttons.append(CircleButton(
+                                        center_x = x,
+                                        center_y = y,
+                                        radius = math.floor(self.window.width/100),
+                                        text = f"{CountryEnum.country_id_to_continent_id(i) + 1}",
+                                    ))
+                                    
         
         with open("edges.txt", "r", encoding="utf-8") as file:
             edges = json.load(file)
@@ -157,13 +165,6 @@ class RiskGame(arcade.View):
                 self.territories[i].adj = adj
             
         self.map = arcade.load_texture("./Risk_game_map.png")
-        if player_count == 2:
-            self.two_player_setup()
-            return
-
-        # create & shuffle set of cards
-        self.cards = Card.new_deck()
-        random.shuffle(self.cards)
 
         # create players
         self.players: list[Player] = []
@@ -171,12 +172,22 @@ class RiskGame(arcade.View):
         # choose order randomly
         random.shuffle(self.players)
 
-        # 
+        if player_count == 2:
+            self.two_player_setup()
+            return
+        
+        # create & shuffle set of cards
+        self.cards = Card.new_deck()
+        random.shuffle(self.cards)
+
 
     def two_player_setup(self):
         self.cards = Card.new_deck(keep_wilds=False)
         random.shuffle(self.cards)
-        
+
+        for player in self.players:
+            player.hand.cards = Card.draw(self.cards, 14) # draw 14 cards from the deck for each player
+
 
     def on_key_press(self, key, modifiers):
         # if key == arcade.key.A:
@@ -234,6 +245,7 @@ class RiskGame(arcade.View):
         pass
     
     def on_mouse_motion(self, x, y, dx, dy):
+        self.mouse_pos = (x, y)
         for button in self.buttons:
             button.check_hover(x, y)
 
@@ -260,9 +272,32 @@ class RiskGame(arcade.View):
         for button in self.buttons:
             button.draw()
 
+        self.draw_tooltip()
+
         # Clear screen
         
         # Draw all items & update text here:
+
+
+    def draw_tooltip(self):
+        for (i, button) in enumerate(self.buttons):
+            if button.is_hovered:
+                label = arcade.Text(
+                    self.territories[i].type.name.replace("_", " ").title(),
+                    0, 0, arcade.color.WHITE, font_size=12
+                )
+
+                label.x = min(self.mouse_pos[0] - label.content_width / 2, self.window.width - label.content_width - 12)
+                label.y = min(self.mouse_pos[1] + 20, self.window.height - label.content_height - 12)
+
+                arcade.draw_rect_filled(
+                    arcade.LBWH(label.x - 6, label.y - 10,
+                                label.content_width + 12, label.content_height + 12),
+                                Color(0, 0, 0, 200)
+                )
+
+                label.draw()
+                return
         
 
 def main():
