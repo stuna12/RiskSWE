@@ -3,6 +3,8 @@ import arcade.gui
 from arcade.types import Color
 import random
 from card import Card
+from human_player import HumanPlayer
+from artificial_player import ArtificialPlayer
 from player import Player
 from country import Country, CountryEnum
 import math
@@ -185,8 +187,11 @@ class RiskGame(arcade.View):
         self.cards = Card.new_deck(keep_wilds=False)
         random.shuffle(self.cards)
 
-        for player in self.players:
-            player.hand.cards = Card.draw(self.cards, 14) # draw 14 cards from the deck for each player
+        self.players.append(HumanPlayer())
+        self.players.append(ArtificialPlayer())
+
+        hands = [self.players[i].hand for i in range(len(self.players))]
+        Card.draw(hands=hands, deck=self.cards, n=14) # Alternatively draws n cards to each player's hands from the top of the deck
 
 
     def on_key_press(self, key, modifiers):
@@ -199,6 +204,7 @@ class RiskGame(arcade.View):
         
         if key == arcade.key.ESCAPE:
             arcade.close_window()
+
 
     def on_mouse_press(self, x, y, button, modifiers):
         """ Called whenever the mouse button is clicked. """
