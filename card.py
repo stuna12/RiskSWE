@@ -1,3 +1,6 @@
+from hand import Hand
+
+
 TERRITORY_COUNT = 42
 
 class Card:
@@ -27,9 +30,9 @@ class Card:
         return deck
 
     @classmethod
-    def draw(cls, deck: list["Card"], n: int) -> list["Card"]:
-        hand = []
-        for _ in range(n):
-            card = deck.pop()
-            hand.append(card)
-        return hand
+    def draw(cls, hands: list["Hand"], deck: list["Card"], n: int) -> list["Card"]:
+        num_hands = len(hands)
+
+        for i in range(n * num_hands):
+            index = i % num_hands
+            hands[index].add_card(deck.pop())
