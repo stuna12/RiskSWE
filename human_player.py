@@ -1,4 +1,4 @@
-import Player from player
+from player import Player
 
 class HumanPlayer(Player):
     pass
