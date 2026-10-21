@@ -56,7 +56,7 @@ class CountryEnum(Enum):
     WESTERN_AUSTRALIA = 41
 
     @staticmethod
-    def country_id_to_continent_id(country: CountryEnum | int):
+    def country_id_to_continent_id(country):
         if isinstance(country, CountryEnum):
             id = country.value
         else:

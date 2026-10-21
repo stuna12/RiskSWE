@@ -1,6 +1,7 @@
 import arcade
 import arcade.gui
 from arcade.types import Color
+from collections.abc import Callable
 import random
 from card import Card
 from human_player import HumanPlayer
@@ -19,9 +20,9 @@ TERRITORY_COUNT = 42
 
 class CircleButton:
     """A custom circular button with text."""
-    def __init__(self, center_x, center_y, radius, text, action = None,
-            normal_color = arcade.color.ORANGE, hover_color = arcade.color.ANTIQUE_RUBY, 
-            inactive_color = arcade.color.GRAY):
+    def __init__(self, center_x : int, center_y : int, radius : int, text : str, action : Callable[[],None] | None = None,
+            normal_color : Color = arcade.color.ORANGE, hover_color: Color = arcade.color.ANTIQUE_RUBY, 
+            inactive_color: Color = arcade.color.GRAY):
         self.center_x = center_x
         self.center_y = center_y
         self.radius = radius
@@ -33,7 +34,7 @@ class CircleButton:
         self.active = True
         self.inactive_color = inactive_color
 
-    def set_active(self, active):
+    def set_active(self, active : bool):
         self.active = active
 
     def draw(self):
@@ -55,7 +56,7 @@ class CircleButton:
             anchor_y="center"
         )
 
-    def check_hover(self, mouse_x, mouse_y):
+    def check_hover(self, mouse_x: int, mouse_y: int):
         """Check if the mouse cursor is inside the circle."""
         # Calculate distance between mouse and center of the circle
         distance = math.sqrt((mouse_x - self.center_x) ** 2 + (mouse_y - self.center_y) ** 2)
@@ -140,13 +141,12 @@ class RiskGame(arcade.View):
         # Set background color
         self.background_color = BACKGROUND_COLOR
         self.map = None
-        self.buttons = []
-        self.territories = []
-        self.selected = None
+        self.buttons: list[CircleButton] = []
+        self.territories: list[Country] = []
+        self.selected: int | None = None
         self.mouse_pos = (0, 0)
     
-    
-    def setup(self, player_count):
+    def setup(self, player_count : int):
         with open("relpos.txt", "r", encoding="utf-8") as file:
             for (i, line) in enumerate(file.readlines()):
                 rx, ry = line.split(", ")
@@ -195,22 +195,24 @@ class RiskGame(arcade.View):
 
 
     def on_key_press(self, key, modifiers):
-        # if key == arcade.key.A:
-        #     data = []
-        #     for territory in self.territories:
-        #         data.append(list(set(territory.adj)))
-        #     with open("edges.txt", "w", encoding="utf-8") as file:
-        #         json.dump(data, file)
+        if key == arcade.key.A:
+            data: list[list[int]] = []
+            for territory in self.territories:
+                data.append(list(set(territory.adj)))
+            with open("edges.txt", "w", encoding="utf-8") as file:
+                json.dump(data, file)
+            with open("edges.txt", "r", encoding="utf-8") as file:
+                        edges = json.load(file)
+                        for (i,adj) in enumerate(edges):
+                            self.territories[i].adj = adj
         
         if key == arcade.key.ESCAPE:
             arcade.close_window()
 
-
-    def on_mouse_press(self, x, y, button, modifiers):
+    def on_mouse_press(self, x: int, y: int, button: int, modifiers):
         """ Called whenever the mouse button is clicked. """
         
         if button == arcade.MOUSE_BUTTON_LEFT:
-            
             for (i, btn) in enumerate(self.buttons):
                 if btn.on_mouse_press():
                     if self.selected == i:
@@ -226,7 +228,22 @@ class RiskGame(arcade.View):
                             else:
                                 btn.set_active(False)
                     return #exit before processing all buttons
-
+        elif button == arcade.MOUSE_BUTTON_RIGHT:
+            for (i, btn) in enumerate(self.buttons):
+                if btn.on_mouse_press():
+                    print("doing things")
+                    if self.selected != i:
+                        self.territories[self.selected].adj.append(i)
+                        self.territories[i].adj.append(self.selected)
+                    else:
+                        self.selected = i
+                        adj = self.territories[i].adj
+                        for (j, btn) in enumerate(self.buttons):
+                            if j == i or (j in adj):
+                                btn.set_active(True)
+                            else:
+                                btn.set_active(False)
+                    return #exit before processing all buttons
         # if button == arcade.MOUSE_BUTTON_LEFT:
         #     for (i, btn) in enumerate(self.buttons):
         #         if btn.on_mouse_press():
@@ -245,21 +262,21 @@ class RiskGame(arcade.View):
         #     print(rx, ", ", ry)
         #     file.write(f"{rx:.16f}, {ry:.16f}\n")
 
-    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+    def on_mouse_drag(self, x: int, y: int, dx: int, dy: int, buttons, modifiers):
         """ Called whenever the mouse is clicked and dragged 
             `x` and `y` are current position, `dx` and `dy` are distance from last mouse event """
         pass
     
-    def on_mouse_motion(self, x, y, dx, dy):
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         self.mouse_pos = (x, y)
         for button in self.buttons:
             button.check_hover(x, y)
 
-    def on_mouse_release(self, x, y, button, modifiers):
+    def on_mouse_release(self, x: int, y: int, button, modifiers):
         """ Called whenever a button is released """
         pass
 
-    def on_update(self, delta_time):
+    def on_update(self, delta_time: float):
         # Move the rectangle
         pass
 
