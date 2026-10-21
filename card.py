@@ -1,5 +1,8 @@
-from hand import Hand
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from hand import Hand # fixes circular import issue, as Hand is only used for type checking in this class
 
 TERRITORY_COUNT = 42
 
