@@ -18,6 +18,19 @@ WINDOW_HEIGHT = 720
 BACKGROUND_COLOR = arcade.color.ALMOND
 TERRITORY_COUNT = 42
 
+# (name, color) for each player, in the order they are created
+PLAYER_SETUPS = [
+    ("Blue", arcade.color.BLUE),
+    ("Red", arcade.color.RED),
+]
+
+
+def lighten(color: Color, amount: int = 60) -> Color:
+    """Return a brighter version of `color`, used for hover feedback."""
+    return Color(min(color[0] + amount, 255),
+                 min(color[1] + amount, 255),
+                 min(color[2] + amount, 255), 255)
+
 class CircleButton:
     """A custom circular button with text."""
     def __init__(self, center_x : int, center_y : int, radius : int, text : str, action : Callable[[],None] | None = None,
@@ -33,6 +46,8 @@ class CircleButton:
         self.is_hovered = False
         self.active = True
         self.inactive_color = inactive_color
+        self.outline: Color | None = None   # Highlight ring
+        self.outline_width = 3
 
     def set_active(self, active : bool):
         self.active = active
@@ -44,6 +59,10 @@ class CircleButton:
 
         # Draw the circular button base
         arcade.draw_circle_filled(self.center_x, self.center_y, self.radius, color)
+
+        if self.outline is not None:
+            arcade.draw_circle_outline(self.center_x, self.center_y, self.radius + 3,
+                                       self.outline, self.outline_width)
         
         # Draw the text centered inside the circle
         arcade.draw_text(
@@ -110,7 +129,7 @@ class MainMenuView(arcade.View):
         def on_click_start(event):
             # Instantiate the game view, set it up, and switch to it
             game_view = RiskGame()
-            game_view.setup(3)
+            game_view.setup(2)
             self.window.show_view(game_view)
 
         # Center the v_box within the anchor layout
@@ -145,6 +164,10 @@ class RiskGame(arcade.View):
         self.territories: list[Country] = []
         self.selected: int | None = None
         self.mouse_pos = (0, 0)
+        self.players: list[Player] = []
+        self.current_player_index = 0
+        self.current_player: Player | None = None
+        self.end_turn_button: CircleButton | None = None
     
     def setup(self, player_count : int):
         with open("relpos.txt", "r", encoding="utf-8") as file:
@@ -168,44 +191,72 @@ class RiskGame(arcade.View):
             
         self.map = arcade.load_texture("./Risk_game_map.png")
 
-        # create players
-        self.players: list[Player] = []
+        self.end_turn_button = CircleButton(
+            center_x = self.window.width - 80,
+            center_y = 80,
+            radius = 50,
+            text = "End Turn",
+            action = self.end_turn,
+        )
 
-        # choose order randomly
-        random.shuffle(self.players)
+        # create & shuffle set of cards
+        self.cards = Card.new_deck(keep_wilds=(player_count != 2))
+        random.shuffle(self.cards)
 
         if player_count == 2:
             self.two_player_setup()
-            return
-        
-        # create & shuffle set of cards
-        self.cards = Card.new_deck()
-        random.shuffle(self.cards)
+        else:
+            raise NotImplementedError("Only the 2-player setup is implemented so far")
 
 
     def two_player_setup(self):
-        self.cards = Card.new_deck(keep_wilds=False)
-        random.shuffle(self.cards)
+        # Both players are human for now, swap one for ArtificialPlayer later
+        self.players = [HumanPlayer(color, name) for (name, color) in PLAYER_SETUPS]
+        random.shuffle(self.players)  # Random turn order
+        self.current_player_index = 0
+        self.current_player = self.players[self.current_player_index]
 
-        self.players.append(HumanPlayer())
-        self.players.append(ArtificialPlayer())
+        self.deal_territories()
+        self.refresh_buttons()
 
-        hands = [self.players[i].hand for i in range(len(self.players))]
-        Card.draw(hands=hands, deck=self.cards, n=14) # Alternatively draws n cards to each player's hands from the top of the deck
+    def deal_territories(self):
+        """Randomly split the territories between the players (round-robin over a shuffled list,
+        so 2 players get 21 each and it extends to more players later)."""
+        indices = list(range(len(self.territories)))
+        random.shuffle(indices)
+        for (n, i) in enumerate(indices):
+            self.territories[i].owner = self.players[n % len(self.players)]
+
+    def refresh_buttons(self):
+        """Recolor every territory by owner. Only the current player's territories react to hover."""
+        for (territory, btn) in zip(self.territories, self.buttons):
+            btn.normal_color = territory.owner.color
+            if territory.owner is self.current_player:
+                btn.hover_color = lighten(territory.owner.color)
+            else:
+                btn.hover_color = territory.owner.color
+
+    def update_highlights(self):
+        """White ring on the selected territory, yellow rings on its neighbors."""
+        for btn in self.buttons:
+            btn.outline = None
+        if self.selected is None:
+            return
+        for j in self.territories[self.selected].adj:
+            self.buttons[j].outline = arcade.color.YELLOW
+            self.buttons[j].outline_width = 2
+        self.buttons[self.selected].outline = arcade.color.WHITE
+        self.buttons[self.selected].outline_width = 4
+
+    def end_turn(self):
+        self.selected = None
+        self.current_player_index = (self.current_player_index + 1) % len(self.players)
+        self.current_player = self.players[self.current_player_index]
+        self.update_highlights()
+        self.refresh_buttons()
 
 
     def on_key_press(self, key, modifiers):
-        if key == arcade.key.A:
-            data: list[list[int]] = []
-            for territory in self.territories:
-                data.append(list(set(territory.adj)))
-            with open("edges.txt", "w", encoding="utf-8") as file:
-                json.dump(data, file)
-            with open("edges.txt", "r", encoding="utf-8") as file:
-                        edges = json.load(file)
-                        for (i,adj) in enumerate(edges):
-                            self.territories[i].adj = adj
-        
         if key == arcade.key.ESCAPE:
             arcade.close_window()
 
@@ -213,36 +264,16 @@ class RiskGame(arcade.View):
         """ Called whenever the mouse button is clicked. """
         
         if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.end_turn_button and self.end_turn_button.on_mouse_press():
+                return
+
             for (i, btn) in enumerate(self.buttons):
                 if btn.on_mouse_press():
-                    if self.selected == i:
-                        self.selected = None
-                        for btn in self.buttons:
-                            btn.set_active(True)
-                    else:
-                        self.selected = i
-                        adj = self.territories[i].adj
-                        for (j, btn) in enumerate(self.buttons):
-                            if j == i or (j in adj):
-                                btn.set_active(True)
-                            else:
-                                btn.set_active(False)
-                    return #exit before processing all buttons
-        elif button == arcade.MOUSE_BUTTON_RIGHT:
-            for (i, btn) in enumerate(self.buttons):
-                if btn.on_mouse_press():
-                    print("doing things")
-                    if self.selected != i:
-                        self.territories[self.selected].adj.append(i)
-                        self.territories[i].adj.append(self.selected)
-                    else:
-                        self.selected = i
-                        adj = self.territories[i].adj
-                        for (j, btn) in enumerate(self.buttons):
-                            if j == i or (j in adj):
-                                btn.set_active(True)
-                            else:
-                                btn.set_active(False)
+                    # Players may only select territories they control
+                    if self.territories[i].owner is not self.current_player:
+                        return
+                    self.selected = None if self.selected == i else i
+                    self.update_highlights()
                     return #exit before processing all buttons
         # if button == arcade.MOUSE_BUTTON_LEFT:
         #     for (i, btn) in enumerate(self.buttons):
@@ -271,6 +302,8 @@ class RiskGame(arcade.View):
         self.mouse_pos = (x, y)
         for button in self.buttons:
             button.check_hover(x, y)
+        if self.end_turn_button:
+            self.end_turn_button.check_hover(x, y)
 
     def on_mouse_release(self, x: int, y: int, button, modifiers):
         """ Called whenever a button is released """
@@ -295,12 +328,27 @@ class RiskGame(arcade.View):
         for button in self.buttons:
             button.draw()
 
+        if self.end_turn_button:
+            self.end_turn_button.draw()
+        self.draw_turn_banner()
         self.draw_tooltip()
 
         # Clear screen
         
         # Draw all items & update text here:
 
+
+    def draw_turn_banner(self):
+        """Top-left banner showing whose turn it is."""
+        player = self.current_player
+        label = arcade.Text(f"{player.name}'s Turn", 0, 0, arcade.color.WHITE, font_size=18, bold=True)
+        label.x = 16
+        label.y = self.window.height - label.content_height - 16
+        arcade.draw_rect_filled(
+            arcade.LBWH(label.x - 8, label.y - 6, label.content_width + 16, label.content_height + 12),
+            Color(player.color[0], player.color[1], player.color[2], 255)
+        )
+        label.draw()
 
     def draw_tooltip(self):
         for (i, button) in enumerate(self.buttons):

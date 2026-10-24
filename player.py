@@ -3,9 +3,10 @@ from abc import ABC, abstractmethod
 from country import Country
 
 class Player(ABC):
-    def __init__(self) -> None:
-        self.color: int
-        self.hand: Hand
+    def __init__(self, color: tuple[int, ...], name: str = "Player") -> None:
+        self.color = color
+        self.name = name
+        self.hand = Hand()
     
     def controlled_territories(self, territories: list[Country]) -> list[Country]:
         controlled = []
@@ -23,9 +24,9 @@ class Player(ABC):
         return list(attackable)
 
     def available_troops(self, territories):
-        availalbe = 0
+        available = 0
         # The number of territories you occupy
-        availalbe += min(3, len(self.controlled_territories(territories))//3)
+        available += max(3, len(self.controlled_territories(territories))//3)
         # The value of the continents you control (TODO)
         
         # The value of the matched sets of RISK cards you trade in  (TODO)
