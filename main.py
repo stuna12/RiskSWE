@@ -226,10 +226,14 @@ class RiskGame(arcade.View):
         random.shuffle(indices)
         for (n, i) in enumerate(indices):
             self.territories[i].owner = self.players[n % len(self.players)]
+            self.territories[i].armies = random.randint(1, 5)  # TODO: replace with real placement phase
 
     def refresh_buttons(self):
         """Recolor every territory by owner. Only the current player's territories react to hover."""
+
+        # zip pairs each territory with its button (both lists are in the same order)
         for (territory, btn) in zip(self.territories, self.buttons):
+            btn.text = str(territory.armies)
             btn.normal_color = territory.owner.color
             if territory.owner is self.current_player:
                 btn.hover_color = lighten(territory.owner.color)
@@ -247,6 +251,28 @@ class RiskGame(arcade.View):
             self.buttons[j].outline_width = 2
         self.buttons[self.selected].outline = arcade.color.WHITE
         self.buttons[self.selected].outline_width = 4
+
+    def attack(self, src_i: int, dst_i: int):
+        """Simple attack for now: higher troop count wins and takes the territory."""
+        src = self.territories[src_i]
+        dst = self.territories[dst_i]
+
+        # Need at least 2 troops to attack (1 must stay behind), and strictly more than the defender
+        if src.armies < 2 or src.armies <= dst.armies:
+            return
+
+        dst.owner = src.owner
+        dst.armies = src.armies - 1   # Everything but one troop moves in
+        src.armies = 1                # One troop stays behind
+
+        self.selected = None
+        self.update_highlights()
+        self.refresh_buttons()
+        self.check_winner()
+
+    def check_winner(self):
+        if all(t.owner is self.current_player for t in self.territories):
+            print(f"{self.current_player.name} wins!")  # TODO: real win screen
 
     def end_turn(self):
         self.selected = None
@@ -269,11 +295,13 @@ class RiskGame(arcade.View):
 
             for (i, btn) in enumerate(self.buttons):
                 if btn.on_mouse_press():
-                    # Players may only select territories they control
-                    if self.territories[i].owner is not self.current_player:
-                        return
-                    self.selected = None if self.selected == i else i
-                    self.update_highlights()
+                    if self.territories[i].owner is self.current_player:
+                        # Own territory: select / deselect
+                        self.selected = None if self.selected == i else i
+                        self.update_highlights()
+                    elif self.selected is not None and i in self.territories[self.selected].adj:
+                        # Enemy neighbor of the selected territory: attack it
+                        self.attack(self.selected, i)
                     return #exit before processing all buttons
         # if button == arcade.MOUSE_BUTTON_LEFT:
         #     for (i, btn) in enumerate(self.buttons):

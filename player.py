@@ -16,12 +16,12 @@ class Player(ABC):
         return controlled
     
     def attackable_territories(self, territories: list[Country]) -> list[Country]:
-        attackable = set()
+        attackable = []
         for territory in self.controlled_territories(territories):
-            for candidate in territory.neighbors:
-                if candidate.owner != self:
-                    attackable.add(territory)
-        return list(attackable)
+            # adj holds indices into `territories`
+            if any(territories[j].owner != self for j in territory.adj):
+                attackable.append(territory)
+        return attackable
 
     def available_troops(self, territories):
         available = 0
