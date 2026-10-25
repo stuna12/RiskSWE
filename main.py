@@ -31,6 +31,10 @@ def lighten(color: Color, amount: int = 60) -> Color:
                  min(color[1] + amount, 255),
                  min(color[2] + amount, 255), 255)
 
+def roll_dice(count: int) -> list[int]:
+    """Roll `count` six-sided dice, sorted highest first (the order Risk compares them in)."""
+    return sorted((random.randint(1, 6) for _ in range(count)), reverse=True)
+
 class CircleButton:
     """A custom circular button with text."""
     def __init__(self, center_x : int, center_y : int, radius : int, text : str, action : Callable[[],None] | None = None,
@@ -168,6 +172,8 @@ class RiskGame(arcade.View):
         self.current_player_index = 0
         self.current_player: Player | None = None
         self.end_turn_button: CircleButton | None = None
+        self.roll_button: CircleButton | None = None
+        self.dice: list[int] = []
     
     def setup(self, player_count : int):
         with open("relpos.txt", "r", encoding="utf-8") as file:
@@ -197,6 +203,14 @@ class RiskGame(arcade.View):
             radius = 50,
             text = "End Turn",
             action = self.end_turn,
+        )
+
+        self.roll_button = CircleButton(
+            center_x = 80,
+            center_y = 80,
+            radius = 50,
+            text = "Roll",
+            action = self.roll,
         )
 
         # create & shuffle set of cards
@@ -282,6 +296,10 @@ class RiskGame(arcade.View):
         self.refresh_buttons()
 
 
+    def roll(self):
+        """Not hooked into attacking yet, just rolls 3 dice for display."""
+        self.dice = roll_dice(3)
+
     def on_key_press(self, key, modifiers):
         if key == arcade.key.ESCAPE:
             arcade.close_window()
@@ -291,6 +309,8 @@ class RiskGame(arcade.View):
         
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.end_turn_button and self.end_turn_button.on_mouse_press():
+                return
+            if self.roll_button and self.roll_button.on_mouse_press():
                 return
 
             for (i, btn) in enumerate(self.buttons):
@@ -332,6 +352,8 @@ class RiskGame(arcade.View):
             button.check_hover(x, y)
         if self.end_turn_button:
             self.end_turn_button.check_hover(x, y)
+        if self.roll_button:
+            self.roll_button.check_hover(x, y)
 
     def on_mouse_release(self, x: int, y: int, button, modifiers):
         """ Called whenever a button is released """
@@ -358,6 +380,9 @@ class RiskGame(arcade.View):
 
         if self.end_turn_button:
             self.end_turn_button.draw()
+        if self.roll_button:
+            self.roll_button.draw()
+        self.draw_dice()
         self.draw_turn_banner()
         self.draw_tooltip()
 
@@ -377,6 +402,24 @@ class RiskGame(arcade.View):
             Color(player.color[0], player.color[1], player.color[2], 255)
         )
         label.draw()
+
+    def draw_dice(self):
+        """Bottom-left row of dice showing the last roll, next to the Roll button."""
+        size = 50
+        for (n, value) in enumerate(self.dice):
+            x = 150 + n * (size + 10)
+            y = 80 - size / 2
+            arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), arcade.color.WHITE)
+            arcade.draw_rect_outline(arcade.LBWH(x, y, size, size), arcade.color.BLACK, 2)
+            arcade.draw_text(
+                str(value),
+                x + size / 2,
+                y + size / 2,
+                arcade.color.BLACK,
+                font_size=24,
+                anchor_x="center",
+                anchor_y="center"
+            )
 
     def draw_tooltip(self):
         for (i, button) in enumerate(self.buttons):
