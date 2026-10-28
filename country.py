@@ -1,5 +1,7 @@
 from enum import Enum
 
+
+
 class CountryEnum(Enum):
     # NORTH AMERICA
     ALASKA = 0
