@@ -1,12 +1,13 @@
 from hand import Hand
 from abc import ABC, abstractmethod
 from country import Country
+from arcade.types import Color
 
 class Player(ABC):
-    def __init__(self, color: tuple[int, ...], name: str = "Player") -> None:
-        self.color = color
-        self.name = name
-        self.hand = Hand()
+    def __init__(self, color: Color, name: str = "Player") -> None:
+        self.color: Color = color
+        self.name: str = name
+        self.hand: Hand = Hand()
     
     def controlled_territories(self, territories: list[Country]) -> list[Country]:
         controlled = []

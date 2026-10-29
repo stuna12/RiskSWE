@@ -1,6 +1,5 @@
 from enum import Enum
-
-
+from player import Player
 
 class CountryEnum(Enum):
     # NORTH AMERICA
@@ -58,7 +57,7 @@ class CountryEnum(Enum):
     WESTERN_AUSTRALIA = 41
 
     @staticmethod
-    def country_id_to_continent_id(country):
+    def country_id_to_continent_id(country : "CountryEnum | int"):
         if isinstance(country, CountryEnum):
             id = country.value
         else:
@@ -86,5 +85,5 @@ class Country:
     def __init__(self, type: CountryEnum):
         self.type = type
         self.adj: list[int] = []
-        self.owner = None
+        self.owner: Player | None = None
         self.armies: int = 0

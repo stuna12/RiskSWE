@@ -9,6 +9,7 @@ from country import Country, CountryEnum
 import math
 import json
 from CountryButton import CircleButton
+from gamestate import GameState
 
 
 BACKGROUND_COLOR = arcade.color.ALMOND
@@ -46,6 +47,8 @@ class RiskGame(arcade.View):
         self.end_turn_button: CircleButton | None = None
         self.roll_button: CircleButton | None = None
         self.dice: list[int] = []
+        self.state: GameState
+        self.owner: Player # The owner of the current view
     
     def setup(self, player_count : int):
         with open("relpos.txt", "r", encoding="utf-8") as file:
@@ -235,13 +238,6 @@ class RiskGame(arcade.View):
         # Move the rectangle
         pass
 
-    def on_draw_before_ui(self):
-        pass
-
-    def on_draw_after_ui(self):
-        # Add draw commands that should be on top of the UI (uncommon)
-        pass
-
     def on_draw(self):
         """ Render the screen. """
         self.clear()
@@ -277,21 +273,38 @@ class RiskGame(arcade.View):
 
     def draw_dice(self):
         """Bottom-left row of dice showing the last roll, next to the Roll button."""
+        dice_color: Color = arcade.color.RED
+        dice_number: int = 2
+        active = self.state.active_dice(self.owner)
+
+        if self.owner == self.state.current_player:
+            dice_color = arcade.color.WHITE
+            dice_number = 3
+
+        dice_rolls = self.state.rolls(self.owner)
+        
         size = 50
-        for (n, value) in enumerate(self.dice):
-            x = 150 + n * (size + 10)
+        
+        for i in range(dice_number):
+            x = 150 + i * (size + 10)
             y = 80 - size / 2
-            arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), arcade.color.WHITE)
+            if i < active:
+                arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), dice_color)
+            else:
+                arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), (dice_color[1] // 2, dice_color[2] // 2, dice_color[3] // 2)) #inactive, color greyish
             arcade.draw_rect_outline(arcade.LBWH(x, y, size, size), arcade.color.BLACK, 2)
+
+
+
             arcade.draw_text(
-                str(value),
-                x + size / 2,
-                y + size / 2,
-                arcade.color.BLACK,
-                font_size=24,
-                anchor_x="center",
-                anchor_y="center"
-            )
+                            str("X"),
+                            x + size / 2,
+                            y + size / 2,
+                            arcade.color.BLACK,
+                            font_size=24,
+                            anchor_x="center",
+                            anchor_y="center"
+                        )
 
     def draw_tooltip(self):
         for (i, button) in enumerate(self.buttons):
