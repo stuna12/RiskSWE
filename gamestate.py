@@ -1,7 +1,12 @@
-from country import Country
+from country import Country, CountryEnum
 from player import Player
+from human_player import HumanPlayer
 from enum import Enum
-from random import randint
+from card import Card
+from random import randint, shuffle 
+from arcade.types import Color
+import arcade.color
+import json
 
 class Stage(Enum):
     TERRITORY_SELECTION = 0                 #initial territory selection
@@ -18,22 +23,56 @@ class Stage(Enum):
     FORTIFY = 13
     TWOP_SELECTION = 14
     NEUTRAL_SELECTION = 15
+    PLAYERS_JOINING = 16
 
 # important invariants:
 # selected > attacked > attacker_rolls > defender_rolls, a larger one being None means all smaller must be None
 
+
+
 class GameState:
-    def __init__(self):
-        self.territories: list[Country] = []
+    def __init__(self, territories: list[Country], two_player: bool = False):
+        self.territories: list[Country] = territories
+        self.two_player = two_player
+        self.cards = Card.new_deck(keep_wilds= not two_player)
         self.selected: Country | None = None
         self.attacked: Country | None = None
-        self.players: list[Player] = []
-        self.current_player_index = 0
+        self.players: list[Player] = [] 
         self.current_player: Player | None = None
-        self.current_stage: Stage = Stage.TERRITORY_SELECTION
+        self.current_stage: Stage = Stage.PLAYERS_JOINING
         self.attacker_rolls: list[int] | None = None
         self.defender_rolls: list[int] | None = None
 
+    @classmethod
+    def from_file(cls, edge_file: str, two_player: bool = False) -> "GameState":
+        with open("edges.txt", "r", encoding="utf-8") as file:
+            edges = json.load(file)
+        
+        territories: list[Country] = []
+        for i in range(len(edges)):
+            territories.append(Country(type=CountryEnum(i)))
+        for (i,adj) in enumerate(edges):
+            territories[i].adj = adj
+
+        return cls(territories, two_player)
+        
+    def add_player(self, player: Player) -> bool:
+        if self.current_stage != Stage.PLAYERS_JOINING or (self.two_player and len(self.players) >= 2) or len(self.players) >= 6:
+            return False
+        self.players.append(player)
+        return True
+
+    def start_play(self) -> bool:
+        if self.current_stage != Stage.PLAYERS_JOINING or (self.two_player and len(self.players) < 2) or len(self.players) < 3:
+            return False
+
+        shuffle(self.players)
+        self.current_player = self.players[0]
+        self.current_stage = Stage.TERRITORY_REINFORCEMENT
+        return True
+
+
+    
     def reachable_tiles(self, player: Player) -> list[Country]:
         if player != self.current_player:
             return []
@@ -109,10 +148,7 @@ class GameState:
             self.attacked = None
             return True
 
-        if not (self.attacked is None)  
-        
-        
-        self.attacked_pair
+        self.selected = self.territories[id]
         return True
 
     def reset_attack(self):
@@ -125,9 +161,12 @@ class GameState:
         if player == self.current_player and self.current_stage == Stage.ATTACK:
             self.current_stage = Stage.CHECK_DEFEAT
             self.reset_attack()
-            
-            
 
+            
+    def end_turn(self):
+        self.selected = None
+        self.current_player_index = (self.current_player_index + 1) % len(self.players)
+        self.current_player = self.players[self.current_player_index]
 
     def do_damage(self, player : Player) -> bool:
         if self.attacker_rolls is None or self.defender_rolls is None or self.attacked is None or self.selected is None:

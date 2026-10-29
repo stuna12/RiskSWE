@@ -10,21 +10,21 @@ class Player(ABC):
         self.hand: Hand = Hand()
     
     def controlled_territories(self, territories: list[Country]) -> list[Country]:
-        controlled = []
+        controlled: list[Country] = []
         for territory in territories:
             if territory.owner == self:
                 controlled.append(territory)
         return controlled
     
     def attackable_territories(self, territories: list[Country]) -> list[Country]:
-        attackable = []
+        attackable: list[Country] = []
         for territory in self.controlled_territories(territories):
             # adj holds indices into `territories`
             if any(territories[j].owner != self for j in territory.adj):
                 attackable.append(territory)
         return attackable
 
-    def available_troops(self, territories):
+    def available_troops(self, territories: list[Country]):
         available = 0
         # The number of territories you occupy
         available += max(3, len(self.controlled_territories(territories))//3)
@@ -34,11 +34,3 @@ class Player(ABC):
         # The specific territory pictured on a traded-in card       (TODO)
 
         return available
-
-    @abstractmethod
-    def place_unoccupied(self, territories: list[Country]) -> int:
-        pass
-    
-    @abstractmethod
-    def place_occupied(self, territories: list[Country]) -> int:
-        pass
