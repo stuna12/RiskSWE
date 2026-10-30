@@ -4,7 +4,6 @@ import random
 from card import Card
 from human_player import HumanPlayer
 from artificial_player import ArtificialPlayer
-from player import Player
 from country import Country, CountryEnum
 import math
 import json
@@ -20,13 +19,17 @@ PLAYER_SETUPS = [
     ("Red", arcade.color.RED),
 ]
 
-def lighten(color: Color, amount: int = 60) -> Color:
+# Turn phases: reinforce first, then attack
+REINFORCE = "reinforce"
+ATTACK = "attack"
+
+def lighten(color, amount=60):
     """Return a brighter version of `color`, used for hover feedback."""
     return Color(min(color[0] + amount, 255),
                  min(color[1] + amount, 255),
                  min(color[2] + amount, 255), 255)
 
-def roll_dice(count: int) -> list[int]:
+def roll_dice(count):
     """Roll `count` six-sided dice, sorted highest first (the order Risk compares them in)."""
     return sorted((random.randint(1, 6) for _ in range(count)), reverse=True)
 
@@ -36,18 +39,20 @@ class RiskGame(arcade.View):
         # Set background color
         self.background_color = BACKGROUND_COLOR
         self.map = None
-        self.buttons: list[CircleButton] = []
-        self.territories: list[Country] = []
-        self.selected: int | None = None
+        self.buttons = []
+        self.territories = []
+        self.selected = None
         self.mouse_pos = (0, 0)
-        self.players: list[Player] = []
+        self.players = []
         self.current_player_index = 0
-        self.current_player: Player | None = None
-        self.end_turn_button: CircleButton | None = None
-        self.roll_button: CircleButton | None = None
-        self.dice: list[int] = []
+        self.current_player = None
+        self.end_turn_button = None
+        self.roll_button = None
+        self.dice = []
+        self.phase = REINFORCE
+        self.reinforcements_left = 0
     
-    def setup(self, player_count : int):
+    def setup(self, player_count):
         with open("relpos.txt", "r", encoding="utf-8") as file:
             for (i, line) in enumerate(file.readlines()):
                 rx, ry = line.split(", ")
@@ -104,6 +109,7 @@ class RiskGame(arcade.View):
 
         self.deal_territories()
         self.refresh_buttons()
+        self.start_turn()
 
     def deal_territories(self):
         """Randomly split the territories between the players (round-robin over a shuffled list,
@@ -138,7 +144,7 @@ class RiskGame(arcade.View):
         self.buttons[self.selected].outline = arcade.color.WHITE
         self.buttons[self.selected].outline_width = 4
 
-    def attack(self, src_i: int, dst_i: int):
+    def attack(self, src_i, dst_i):
         """Simple attack for now: higher troop count wins and takes the territory."""
         src = self.territories[src_i]
         dst = self.territories[dst_i]
@@ -160,12 +166,37 @@ class RiskGame(arcade.View):
         if all(t.owner is self.current_player for t in self.territories):
             print(f"{self.current_player.name} wins!")  # TODO: real win screen
 
-    def end_turn(self):
+    def start_turn(self):
+        """Begin a turn: hand the current player their reinforcements and lock attacking."""
         self.selected = None
+        self.update_highlights()
+        self.reinforcements_left = self.current_player.available_troops(self.territories)
+        self.set_phase(REINFORCE if self.reinforcements_left > 0 else ATTACK)
+
+    def set_phase(self, phase):
+        self.phase = phase
+        # Attack phase buttons are greyed out and ignore clicks during reinforcement
+        in_attack = (phase == ATTACK)
+        self.end_turn_button.set_active(in_attack)
+        self.roll_button.set_active(in_attack)
+
+    def reinforce(self, i):
+        """Place one troop on territory i (must be owned by the current player)."""
+        if self.phase != REINFORCE or self.reinforcements_left <= 0:
+            return
+        self.territories[i].armies += 1
+        self.reinforcements_left -= 1
+        self.refresh_buttons()
+        if self.reinforcements_left == 0:
+            self.set_phase(ATTACK)
+
+    def end_turn(self):
+        if self.phase != ATTACK:
+            return
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.current_player = self.players[self.current_player_index]
-        self.update_highlights()
         self.refresh_buttons()
+        self.start_turn()
 
 
     def roll(self):
@@ -176,7 +207,7 @@ class RiskGame(arcade.View):
         if key == arcade.key.ESCAPE:
             arcade.close_window()
 
-    def on_mouse_press(self, x: int, y: int, button: int, modifiers):
+    def on_mouse_press(self, x, y, button, modifiers):
         """ Called whenever the mouse button is clicked. """
         
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -187,7 +218,12 @@ class RiskGame(arcade.View):
 
             for (i, btn) in enumerate(self.buttons):
                 if btn.on_mouse_press():
-                    if self.territories[i].owner is self.current_player:
+                    owned = self.territories[i].owner is self.current_player
+                    if self.phase == REINFORCE:
+                        # Only reinforcing is allowed: click your own territory to add a troop
+                        if owned:
+                            self.reinforce(i)
+                    elif owned:
                         # Own territory: select / deselect
                         self.selected = None if self.selected == i else i
                         self.update_highlights()
@@ -213,12 +249,12 @@ class RiskGame(arcade.View):
         #     print(rx, ", ", ry)
         #     file.write(f"{rx:.16f}, {ry:.16f}\n")
 
-    def on_mouse_drag(self, x: int, y: int, dx: int, dy: int, buttons, modifiers):
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """ Called whenever the mouse is clicked and dragged 
             `x` and `y` are current position, `dx` and `dy` are distance from last mouse event """
         pass
     
-    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
+    def on_mouse_motion(self, x, y, dx, dy):
         self.mouse_pos = (x, y)
         for button in self.buttons:
             button.check_hover(x, y)
@@ -227,11 +263,11 @@ class RiskGame(arcade.View):
         if self.roll_button:
             self.roll_button.check_hover(x, y)
 
-    def on_mouse_release(self, x: int, y: int, button, modifiers):
+    def on_mouse_release(self, x, y, button, modifiers):
         """ Called whenever a button is released """
         pass
 
-    def on_update(self, delta_time: float):
+    def on_update(self, delta_time):
         # Move the rectangle
         pass
 
@@ -256,6 +292,7 @@ class RiskGame(arcade.View):
             self.roll_button.draw()
         self.draw_dice()
         self.draw_turn_banner()
+        self.draw_phase_banner()
         self.draw_tooltip()
 
         # Clear screen
@@ -272,6 +309,24 @@ class RiskGame(arcade.View):
         arcade.draw_rect_filled(
             arcade.LBWH(label.x - 8, label.y - 6, label.content_width + 16, label.content_height + 12),
             Color(player.color[0], player.color[1], player.color[2], 255)
+        )
+        label.draw()
+
+    def draw_phase_banner(self):
+        """Banner under the turn banner showing the phase and remaining reinforcements."""
+        if self.phase == REINFORCE:
+            text = f"REINFORCE: {self.reinforcements_left} troops left"
+            bg = Color(200, 120, 0, 255)
+        else:
+            text = "ATTACK PHASE"
+            bg = Color(60, 60, 60, 255)
+
+        label = arcade.Text(text, 0, 0, arcade.color.WHITE, font_size=16, bold=True)
+        label.x = 16
+        label.y = self.window.height - 90
+        arcade.draw_rect_filled(
+            arcade.LBWH(label.x - 8, label.y - 6, label.content_width + 16, label.content_height + 12),
+            bg
         )
         label.draw()
 

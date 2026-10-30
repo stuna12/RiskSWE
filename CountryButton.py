@@ -1,13 +1,11 @@
-from collections.abc import Callable
-from arcade.types import Color
 import arcade
 import math
 
 class CircleButton:
     """A custom circular button with text."""
-    def __init__(self, center_x : int, center_y : int, radius : int, text : str, action : Callable[[],None] | None = None,
-            normal_color : Color = arcade.color.ORANGE, hover_color: Color = arcade.color.ANTIQUE_RUBY, 
-            inactive_color: Color = arcade.color.GRAY):
+    def __init__(self, center_x, center_y, radius, text, action=None,
+            normal_color=arcade.color.ORANGE, hover_color=arcade.color.ANTIQUE_RUBY,
+            inactive_color=arcade.color.GRAY):
         self.center_x = center_x
         self.center_y = center_y
         self.radius = radius
@@ -15,13 +13,13 @@ class CircleButton:
         self.normal_color = normal_color
         self.hover_color = hover_color
         self.action = action  # The function to run when clicked
-        self.is_hovered : bool = False
+        self.is_hovered = False
         self.active = True
         self.inactive_color = inactive_color
-        self.outline: Color | None = None   # Highlight ring
+        self.outline = None   # Highlight ring
         self.outline_width = 3
 
-    def set_active(self, active : bool):
+    def set_active(self, active):
         self.active = active
 
     def draw(self):
@@ -47,7 +45,7 @@ class CircleButton:
             anchor_y="center"
         )
 
-    def check_hover(self, mouse_x: int, mouse_y: int):
+    def check_hover(self, mouse_x, mouse_y):
         """Check if the mouse cursor is inside the circle."""
         # Calculate distance between mouse and center of the circle
         distance = math.sqrt((mouse_x - self.center_x) ** 2 + (mouse_y - self.center_y) ** 2)
@@ -55,7 +53,7 @@ class CircleButton:
 
     def on_mouse_press(self):
         """Execute action if the button is clicked."""
-        if self.is_hovered and self.action:
+        if self.is_hovered and self.active and self.action:
             self.action()
         if self.is_hovered:
             return True
