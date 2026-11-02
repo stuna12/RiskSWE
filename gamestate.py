@@ -1,3 +1,4 @@
+import json
 from country import Country, CountryEnum
 from player import Player
 from human_player import HumanPlayer
@@ -6,7 +7,7 @@ from card import Card
 from random import randint, shuffle 
 from arcade.types import Color
 import arcade.color
-import json
+
 
 class Stage(Enum):
     TERRITORY_SELECTION = 0                 #initial territory selection
@@ -35,7 +36,8 @@ class GameState:
         self.cards = Card.new_deck(keep_wilds= not two_player)
         self.selected: Country | None = None
         self.attacked: Country | None = None
-        self.players: list[Player] = [] 
+        self.players: list[Player] = []
+        self.armies_remaining: dict[Player, int] = {}
         self.current_player: Player | None = None
         self.current_stage: Stage = Stage.PLAYERS_JOINING
         self.attacker_rolls: list[int] | None = None
@@ -63,6 +65,8 @@ class GameState:
     def start_play(self) -> bool:
         if self.current_stage != Stage.PLAYERS_JOINING or len(self.players) < 2 or (not self.two_player and len(self.players) < 3):
             return False
+        for player in self.players:
+            self.armies_remaining[player] = INFANTRY_COUNT[len(self.players)]
         shuffle(self.players)
         self.current_player = self.players[0]
         self.current_stage = Stage.TERRITORY_SELECTION
@@ -148,15 +152,17 @@ class GameState:
 
         if self.current_stage == Stage.TERRITORY_SELECTION:
             self.territories[id].armies += 1
+            self.armies_remaining[player] -= 1 
             self.territories[id].owner = self.current_player
-            if len(self.reachable_tiles(player)) == 0:
+            if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
                 self.current_stage = Stage.TERRITORY_REINFORCEMENT
             self.end_turn()
             return True
 
         if self.current_stage == Stage.TERRITORY_REINFORCEMENT:
             self.territories[id].armies += 1
-            if len(self.reachable_tiles(player)) == 0:
+            self.armies_remaining[player] -= 1 
+            if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
                 self.current_stage = Stage.TERRITORY_REINFORCEMENT
             self.end_turn()
             return True
