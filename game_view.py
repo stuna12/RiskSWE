@@ -40,7 +40,7 @@ class RiskGame(arcade.View):
         self.mouse_pos = (0, 0)
         self.end_turn_button: CircleButton | None = None
         self.roll_button: CircleButton | None = None
-        self.state: GameState = GameState.from_file("edges.txt")
+        self.state: GameState = GameState.from_file("edges.txt", True)
         self.owner: Player # The owner of the current view
     
     def setup(self, player_count : int):
@@ -85,15 +85,20 @@ class RiskGame(arcade.View):
     def two_player_setup(self):
         # Both players are human for now, swap one for ArtificialPlayer later
          # Random turn order
+        self.state.add_player(Player(PLAYER_SETUPS[0][1], PLAYER_SETUPS[0][0]))
+        self.state.add_player(Player(PLAYER_SETUPS[1][1], PLAYER_SETUPS[1][0]))
         self.owner = self.state.players[0]
-
+        self.state.start_play()
+        
         self.refresh_buttons()
 
     def refresh_buttons(self):
         """Recolor every territory by owner. Only the current player's territories react to hover."""
-
+        assert self.state.current_player is not None
+        self.owner = self.state.current_player
         interactible = self.state.reachable_tiles(self.owner)
-
+        # assert len(interactible) > 1
+        # print(interactible)
         # zip pairs each territory with its button (both lists are in the same order)
         for (territory, btn) in zip(self.state.territories, self.buttons):
             btn.text = str(territory.armies)
@@ -123,7 +128,7 @@ class RiskGame(arcade.View):
 
     def roll(self):
         """Not hooked into attacking yet, just rolls 3 dice for display."""
-        self.dice = roll_dice(3)
+        self.state.rolls(self.owner)
 
     def on_key_press(self, symbol: int, modifiers: int):
         if symbol == arcade.key.ESCAPE:
@@ -170,6 +175,8 @@ class RiskGame(arcade.View):
         assert self.map is not None 
         arcade.draw_texture_rect(self.map, 
                     arcade.LBWH(0,0,self.window.width, self.window.height))
+        self.refresh_buttons()
+        self.update_highlights()
         for button in self.buttons:
             button.draw()
 
@@ -184,7 +191,9 @@ class RiskGame(arcade.View):
     def draw_turn_banner(self):
         """Top-left banner showing whose turn it is."""
         player = self.state.current_player
-        label = arcade.Text(f"{player.name}'s Turn", 0, 0, arcade.color.WHITE, font_size=18, bold=True)
+        if player is None:
+            return
+        label = arcade.Text(f"{player.name}'s Turn; {self.state.current_stage.name}", 0, 0, arcade.color.WHITE, font_size=18, bold=True)
         label.x = 16
         label.y = self.window.height - label.content_height - 16
         arcade.draw_rect_filled(
@@ -213,7 +222,7 @@ class RiskGame(arcade.View):
             if i < active:
                 arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), dice_color)
             else:
-                arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), (dice_color[1] // 2, dice_color[2] // 2, dice_color[3] // 2)) #inactive, color greyish
+                arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), (dice_color[0] // 2, dice_color[1] // 2, dice_color[2] // 2)) #inactive, color greyish
             
             arcade.draw_rect_outline(arcade.LBWH(x, y, size, size), arcade.color.BLACK, 2)
 
