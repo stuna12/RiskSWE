@@ -37,11 +37,12 @@ class RiskGame(arcade.View):
         # Set background color
         self.background_color = BACKGROUND_COLOR
         self.map = None
-        self.buttons: list[CircleButton] = []
+        self.buttons = []
         self.mouse_pos = (0, 0)
-        self.end_turn_button: CircleButton | None = None
-        self.roll_button: CircleButton | None = None
-        self.state: GameState = GameState.from_file("edges.txt", True)
+        self.end_turn_button = None
+        self.roll_button = None
+        self.quit_button = None
+        self.state = GameState.from_file("edges.txt", True)
         self.owner: Player # The owner of the current view
 
     def setup(self, player_count):
@@ -73,6 +74,16 @@ class RiskGame(arcade.View):
             radius = 50,
             text = "Roll",
             action = self.roll,
+        )
+
+        self.quit_button = CircleButton(
+            center_x = self.window.width - 50,
+            center_y = self.window.height - 50,
+            radius = 50,
+            text = "Quit Game",
+            action = arcade.close_window,
+            normal_color = arcade.color.DARK_RED,
+            hover_color = arcade.color.RED,
         )
 
         # create & shuffle set of cards
@@ -146,6 +157,8 @@ class RiskGame(arcade.View):
                 return
             if self.roll_button and self.roll_button.on_mouse_press():
                 return
+            if self.quit_button and self.quit_button.on_mouse_press():
+                return
 
             for (i, btn) in enumerate(self.buttons):
                 if btn.on_mouse_press():
@@ -165,6 +178,8 @@ class RiskGame(arcade.View):
             self.end_turn_button.check_hover(x, y)
         if self.roll_button:
             self.roll_button.check_hover(x, y)
+        if self.quit_button:
+            self.quit_button.check_hover(x, y)
 
     def on_mouse_release(self, x: int, y: int, button: int, modifiers: int):
         """ Called whenever a button is released """
@@ -188,6 +203,8 @@ class RiskGame(arcade.View):
             self.end_turn_button.draw()
         if self.roll_button:
             self.roll_button.draw()
+        if self.quit_button:
+            self.quit_button.draw()
         self.draw_dice()
         self.draw_turn_banner()
         self.draw_phase_banner()
