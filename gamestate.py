@@ -42,10 +42,13 @@ class GameState:
         self.current_stage: Stage = Stage.PLAYERS_JOINING
         self.attacker_rolls: list[int] | None = None
         self.defender_rolls: list[int] | None = None
+        # copies of the most recent roll so the UI can still show them after the attack
+        self.last_attacker_rolls: list[int] = []
+        self.last_defender_rolls: list[int] = []
 
     @classmethod
     def from_file(cls, edge_file: str, two_player: bool = False) -> "GameState":
-        with open("edges.txt", "r", encoding="utf-8") as file:
+        with open(edge_file, "r", encoding="utf-8") as file:
             edges = json.load(file)
         
         territories: list[Country] = []
@@ -65,38 +68,53 @@ class GameState:
     def start_play(self) -> bool:
         if self.current_stage != Stage.PLAYERS_JOINING or len(self.players) < 2 or (not self.two_player and len(self.players) < 3):
             return False
-        for player in self.players:
-            self.armies_remaining[player] = INFANTRY_COUNT[len(self.players)]
+
+        # disabled setup for now
+        # for player in self.players:
+        #     self.armies_remaining[player] = INFANTRY_COUNT[len(self.players)]
+        # shuffle(self.players)
+        # self.current_player = self.players[0]
+        # self.current_stage = Stage.TERRITORY_SELECTION
+
+        # old random setup
         shuffle(self.players)
         self.current_player = self.players[0]
-        self.current_stage = Stage.TERRITORY_SELECTION
+        self.deal_territories()
+        self.current_stage = Stage.ATTACK
         return True
-
-
     
+    def deal_territories(self):
+        """Randomly split territories between players, 1-5 armies each."""
+        indices = list(range(len(self.territories)))
+        shuffle(indices)
+        for (n, i) in enumerate(indices):
+            self.territories[i].owner = self.players[n % len(self.players)]
+            self.territories[i].armies = randint(1, 5)
+
     def reachable_tiles(self, player: Player) -> list[Country]:
         if player != self.current_player:
             return []
 
         if self.current_stage == Stage.ATTACK:
             if self.selected is None:
-                # all owned territories with more than 1 army
-                return list(filter(lambda x: x.owner == player and x.armies > 1, self.territories))
-            elif self.attacked is None:
-                # all non-owned territories adjacent to the selected territory, plus the selected territory itself (for deselection)
-                return list(filter(lambda x : (x.owner != player and (self.selected is not None and x in self.selected.adj)) or x == self.selected, self.territories))
-        
-        if self.current_stage == Stage.TERRITORY_SELECTION:
-            # all tiles with no owner
-            # print("Got here :)")
-            return list(filter(lambda x: x.owner == None, self.territories))
-        
-        elif self.current_stage == Stage.TERRITORY_REINFORCEMENT:
-            # all tiles owned by the current player
-            return list(filter(lambda x: x.owner == self.current_player, self.territories))
-        
-            
-        # elif self.current_stage: 
+                # owned territories that have enough armies to attack
+                return [x for x in self.territories if x.owner == player and x.armies > 1]
+            if self.attacked is None:
+                # adjacent enemies, plus the selected territory itself (to deselect)
+                return [x for x in self.territories
+                        if x == self.selected
+                        or (x.owner != player and x.type.value in self.selected.adj)]
+            # target chosen: click either one to back out
+            return [self.selected, self.attacked]
+
+        # if self.current_stage == Stage.TERRITORY_SELECTION:
+        #     # all tiles with no owner
+        #     return list(filter(lambda x: x.owner == None, self.territories))
+        #
+        # elif self.current_stage == Stage.TERRITORY_REINFORCEMENT:
+        #     # all tiles owned by the current player
+        #     return list(filter(lambda x: x.owner == self.current_player, self.territories))
+
         return []
 
     def active_dice(self, player: Player) -> int:
@@ -117,7 +135,6 @@ class GameState:
             return self.defender_rolls
         return []
 
-    """"""
     def select_dice(self, player:Player, count:int) -> bool:
         if count > self.active_dice(player) or self.current_stage != Stage.ATTACK:
             return False
@@ -136,38 +153,59 @@ class GameState:
         
         return False
     
-    def select_territory(self, player:Player, id: int) -> bool:
+    def select_territory(self, player, id):
         if player != self.current_player or self.territories[id] not in self.reachable_tiles(player):
             return False
+        clicked = self.territories[id]
 
-        # wants to deselect selected territory
-        if self.selected == self.territories[id] and self.attacked is None:
-            self.selected = None
-            return True
-        
-        # wants to deselect attacked territory
-        if self.attacked == self.territories[id] and self.attacker_rolls is None:
-            self.attacked = None
-            return True
-
-        if self.current_stage == Stage.TERRITORY_SELECTION:
-            self.territories[id].armies += 1
-            self.armies_remaining[player] -= 1 
-            self.territories[id].owner = self.current_player
-            if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
-                self.current_stage = Stage.TERRITORY_REINFORCEMENT
-            self.end_turn()
+        if self.current_stage == Stage.ATTACK:
+            if clicked == self.attacked:
+                # pick a different target
+                self.attacked = None
+            elif clicked == self.selected:
+                # deselect attacker, drops target too
+                self.selected = None
+                self.attacked = None
+            elif self.selected is None:
+                # first click: attacker
+                self.selected = clicked
+            else:
+                # second click: target
+                self.attacked = clicked
             return True
 
-        if self.current_stage == Stage.TERRITORY_REINFORCEMENT:
-            self.territories[id].armies += 1
-            self.armies_remaining[player] -= 1 
-            if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
-                self.current_stage = Stage.TERRITORY_REINFORCEMENT
-            self.end_turn()
-            return True
-        self.selected = self.territories[id]
-        return True
+        # if self.current_stage == Stage.TERRITORY_SELECTION:
+        #     self.territories[id].armies += 1
+        #     self.armies_remaining[player] -= 1 
+        #     self.territories[id].owner = self.current_player
+        #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
+        #         self.current_stage = Stage.TERRITORY_REINFORCEMENT
+        #     self.end_turn()
+        #     return True
+        #
+        # if self.current_stage == Stage.TERRITORY_REINFORCEMENT:
+        #     self.territories[id].armies += 1
+        #     self.armies_remaining[player] -= 1 
+        #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
+        #         self.current_stage = Stage.TERRITORY_REINFORCEMENT
+        #     self.end_turn()
+        #     return True
+
+        return False
+
+    def attack_roll(self, player):
+        """Roll max dice for both sides. Called by the Roll button."""
+        if (self.current_stage != Stage.ATTACK or player != self.current_player
+                or self.selected is None or self.attacked is None):
+            return False
+        defender = self.attacked.owner
+        if defender is None:
+            return False
+        if not self.select_dice(player, self.active_dice(player)):
+            return False
+        if not self.select_dice(defender, self.active_dice(defender)):
+            return False
+        return self.do_damage(player)
 
     def reset_attack(self):
         self.attacker_rolls = None
@@ -175,45 +213,48 @@ class GameState:
         self.attacked = None
         self.selected = None
 
-    def skip_attacking(self, player : Player):
+    def skip_attacking(self, player):
         if player == self.current_player and self.current_stage == Stage.ATTACK:
             self.current_stage = Stage.CHECK_DEFEAT
             self.reset_attack()
 
-    
     def end_turn(self):
-        self.selected = None
+        self.reset_attack()
         assert self.current_player is not None
         self.current_player = self.players[(self.players.index(self.current_player) + 1) % len(self.players)]
 
-    def do_damage(self, player : Player) -> bool:
-        if self.attacker_rolls is None or self.defender_rolls is None or self.attacked is None or self.selected is None:
+    def do_damage(self, player):
+        if (self.attacker_rolls is None or self.defender_rolls is None
+                or self.attacked is None or self.selected is None):
             return False
 
-        attack = sorted(self.attacker_rolls)
-        defend = sorted(self.defender_rolls)
+        # keep a sorted copy for the UI, highest first
+        self.last_attacker_rolls = sorted(self.attacker_rolls, reverse=True)
+        self.last_defender_rolls = sorted(self.defender_rolls, reverse=True)
 
-        while len(attack) > 0 and len(defend) > 0:
-            if attack.pop() > defend.pop(): #attacker won roll
+        attack = list(self.last_attacker_rolls)
+        defend = list(self.last_defender_rolls)
+        while attack and defend:
+            # ties go to the defender
+            if attack.pop(0) > defend.pop(0):
                 self.attacked.armies -= 1
             else:
                 self.selected.armies -= 1
 
-        # TODO: handle territory occupation correctly
-        # Should be user-selected value between `len(self.attacker_rolls)` and self.selected.armies-1
-        # Would change game-state to Stage.OCCUPY and wait for GUI to call `occupy`
-        if self.attacked.armies == 0:
-            self.current_stage = Stage.OCCUPY
+        if self.attacked.armies <= 0:
+            # TODO: let the player choose how many to move
+            moved = len(self.attacker_rolls)
             self.attacked.owner = self.current_player
-            self.attacked.armies = 1
-            self.selected.armies -= 1
-
-        self.attacker_rolls = None
-        self.defender_rolls = None
-        self.selected = None
-        self.attacked = None
+            self.attacked.armies = moved
+            self.selected.armies -= moved
+            self.reset_attack()
+        else:
+            self.attacker_rolls = None
+            self.defender_rolls = None
+            if self.selected.armies < 2:
+                self.reset_attack()
         return True
-    
+
 #
 # 1. Determine Play Order
 # 2. Color Selection

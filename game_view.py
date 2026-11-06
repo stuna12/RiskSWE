@@ -85,7 +85,7 @@ class RiskGame(arcade.View):
 
     def two_player_setup(self):
         # Both players are human for now, swap one for ArtificialPlayer later
-         # Random turn order
+        # start_play shuffles the turn order and deals the territories randomly
         self.state.add_player(Player(PLAYER_SETUPS[0][1], PLAYER_SETUPS[0][0]))
         self.state.add_player(Player(PLAYER_SETUPS[1][1], PLAYER_SETUPS[1][0]))
         self.owner = self.state.players[0]
@@ -93,14 +93,6 @@ class RiskGame(arcade.View):
 
         self.refresh_buttons()
 
-    def deal_territories(self):
-        """Randomly split the territories between the players (round-robin over a shuffled list,
-        so 2 players get 21 each and it extends to more players later)."""
-        indices = list(range(len(self.territories)))
-        random.shuffle(indices)
-        for (n, i) in enumerate(indices):
-            self.territories[i].owner = self.players[n % len(self.players)]
-            self.territories[i].armies = random.randint(1, 5)
 
     def refresh_buttons(self):
         """Recolor territories by owner. Only the current player's territories react to hover."""
@@ -122,7 +114,7 @@ class RiskGame(arcade.View):
                 btn.hover_color = btn.normal_color
 
     def update_highlights(self):
-        """White ring on the selected territory, yellow rings on its neighbors."""
+        """White ring on the selected territory, red ring on the target, yellow rings on clickable ones."""
         for btn in self.buttons:
             btn.outline = None
         interactible = self.state.reachable_tiles(self.owner)
@@ -134,11 +126,13 @@ class RiskGame(arcade.View):
             self.buttons[self.state.selected.type.value].outline = arcade.color.WHITE
             self.buttons[self.state.selected.type.value].outline_width = 4
 
-
+        if self.state.attacked is not None:
+            self.buttons[self.state.attacked.type.value].outline = arcade.color.RED
+            self.buttons[self.state.attacked.type.value].outline_width = 4
 
     def roll(self):
-        """Not hooked into attacking yet, just rolls 3 dice for display."""
-        self.state.rolls(self.owner)
+        """Roll max dice for both sides for attack."""
+        self.state.attack_roll(self.owner)
 
     def on_key_press(self, symbol: int, modifiers: int):
         if symbol == arcade.key.ESCAPE:
@@ -241,7 +235,7 @@ class RiskGame(arcade.View):
             dice_color = arcade.color.WHITE
             dice_number = 3
 
-        dice_rolls = self.state.rolls(self.owner)
+        dice_rolls = self.state.last_attacker_rolls
 
         size = 50
 
