@@ -209,13 +209,31 @@ class RiskGame(arcade.View):
         self.draw_turn_banner()
         self.draw_phase_banner()
         self.draw_tooltip()
+        if self.state.winner is not None:
+            self.draw_game_over()
+
+    def draw_game_over(self):
+        """Dim the map and show the winner. Quit stays on top so it can still be clicked."""
+        assert self.state.winner is not None
+        arcade.draw_rect_filled(
+            arcade.LBWH(0, 0, self.window.width, self.window.height),
+            Color(0, 0, 0, 200)
+        )
+        arcade.Text("GAME OVER", self.window.width / 2, self.window.height / 2 + 40,
+                    arcade.color.WHITE, font_size=48, bold=True,
+                    anchor_x="center", anchor_y="center").draw()
+        arcade.Text(f"{self.state.winner.name} wins!", self.window.width / 2, self.window.height / 2 - 30,
+                    arcade.color.WHITE, font_size=28,
+                    anchor_x="center", anchor_y="center").draw()
+        if self.quit_button:
+            self.quit_button.draw()
 
     def draw_turn_banner(self):
         """Top-left banner showing whose turn it is."""
         player = self.state.current_player
         if player is None:
             return
-        label = arcade.Text(f"{player.name}'s Turn; {self.state.current_stage.name}", 0, 0, arcade.color.WHITE, font_size=18, bold=True)
+        label = arcade.Text(f"{player.name}'s Turn; {self.state.current_stage.name}; Cards: {len(player.hand.cards)}", 0, 0, arcade.color.WHITE, font_size=18, bold=True)
         label.x = 16
         label.y = self.window.height - label.content_height - 16
         arcade.draw_rect_filled(
@@ -229,6 +247,9 @@ class RiskGame(arcade.View):
         if self.state.current_stage == Stage.TERRITORY_REINFORCEMENT:
             text = f"REINFORCE: {self.state.armies_remaining[self.owner]} troops left"
             bg = Color(200, 120, 0, 255)
+        elif self.state.current_stage == Stage.GAME_OVER:
+            text = "GAME OVER"
+            bg = Color(60, 60, 60, 255)
         else:
             text = "ATTACK PHASE"
             bg = Color(60, 60, 60, 255)

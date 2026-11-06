@@ -23,6 +23,7 @@ class Stage(Enum):
     TWOP_SELECTION = 14
     NEUTRAL_SELECTION = 15
     PLAYERS_JOINING = 16
+    GAME_OVER = 17
 
 # important invariants:
 # selected > attacked > attacker_rolls > defender_rolls, a larger one being None means all smaller must be None
@@ -34,6 +35,9 @@ class GameState:
         self.territories: list[Country] = territories
         self.two_player = two_player
         self.cards = Card.new_deck(keep_wilds= not two_player)
+        shuffle(self.cards)
+        self.conquered_this_turn: bool = False
+        self.winner: Player | None = None
         self.selected: Country | None = None
         self.attacked: Country | None = None
         self.players: list[Player] = []
@@ -219,9 +223,15 @@ class GameState:
             self.reset_attack()
 
     def end_turn(self):
+        if self.current_stage == Stage.GAME_OVER:
+            return
         self.reset_attack()
         assert self.current_player is not None
-        self.current_player = self.players[(self.players.index(self.current_player) + 1) % len(self.players)]
+        # one card per turn if the player conquered at least one territory
+        if self.conquered_this_turn and self.cards:
+            self.current_player.hand.add_card(self.cards.pop())
+        self.conquered_this_turn = False
+        self.current_player =self.players[(self.players.index(self.current_player) + 1) % len(self.players)]
 
     def do_damage(self, player):
         if (self.attacker_rolls is None or self.defender_rolls is None
@@ -244,16 +254,28 @@ class GameState:
         if self.attacked.armies <= 0:
             # TODO: let the player choose how many to move
             moved = len(self.attacker_rolls)
+            defender = self.attacked.owner
             self.attacked.owner = self.current_player
             self.attacked.armies = moved
             self.selected.armies -= moved
+            self.conquered_this_turn = True
             self.reset_attack()
+            self.check_defeat(defender)
         else:
             self.attacker_rolls = None
             self.defender_rolls = None
             if self.selected.armies < 2:
                 self.reset_attack()
         return True
+
+    def check_defeat(self, defender):
+        """Remove `defender` if they lost their last territory, end the game if one player is left."""
+        if defender is None or defender.controlled_territories(self.territories):
+            return
+        self.players.remove(defender)
+        if len(self.players) == 1:
+            self.winner = self.current_player
+            self.current_stage = Stage.GAME_OVER
 
 #
 # 1. Determine Play Order
