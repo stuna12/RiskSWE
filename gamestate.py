@@ -126,11 +126,21 @@ class GameState:
             # all tiles with no owner
             # print("Got here :)")
             return list(filter(lambda x: x.owner is None, self.territories))
+
+        if self.current_stage == Stage.FORTIFY:
+            if self.selected is not None:
+                return [x for x in self.territories
+                            if x == self.selected
+                            or (x.owner == player and x.type.value in self.selected.adj)]
+            return [x for x in self.territories
+                            if x.owner == player and x.armies > 1]
         
         if self.current_stage in (Stage.TERRITORY_REINFORCEMENT, Stage.PLACE_ARMIES):
             # all tiles owned by the current player
             return list(filter(lambda x: x.owner == self.current_player, self.territories))
-            
+
+        
+
         # elif self.current_stage: 
         return []
 
@@ -190,7 +200,16 @@ class GameState:
                 # second click: target
                 self.attacked = clicked
             return True
-
+        
+        if self.current_stage == Stage.FORTIFY:
+            if clicked == self.selected:
+                self.selected = None
+            elif self.selected is None:
+                self.selected = clicked
+            else: # TODO: allow user to select number
+                clicked.armies += self.selected.armies - 1
+                self.selected.armies = 1
+                self.end_turn()
         # if self.current_stage == Stage.TERRITORY_SELECTION:
         #     self.territories[id].armies += 1
         #     self.armies_remaining[player] -= 1 
@@ -286,7 +305,14 @@ class GameState:
         if self.conquered_this_turn and self.cards:
             self.current_player.hand.add_card(self.cards.pop())
         self.conquered_this_turn = False
+
+        if self.current_stage == Stage.ATTACK:
+            self.current_stage = Stage.FORTIFY
+            return
+            
+        
         self.current_player = self.players[(self.players.index(self.current_player) + 1) % len(self.players)]
+        self.start_turn(self.current_player)
         # TODO: enable once PLACE_ARMIES is playable and start_play fills armies_remaining
         # if self.current_stage not in (Stage.TERRITORY_SELECTION, Stage.TERRITORY_REINFORCEMENT):
         #     self.start_turn(self.current_player)
