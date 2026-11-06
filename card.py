@@ -1,8 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+# fixes circular import issue, as Hand is only used for type checking in this class
 if TYPE_CHECKING:
-    from hand import Hand # fixes circular import issue, as Hand is only used for type checking in this class
+    from hand import Hand
 
 TERRITORY_COUNT = 42
 
@@ -22,7 +23,7 @@ class Card:
 
     @classmethod
     def new_deck(cls, keep_wilds: bool = True) -> list["Card"]:
-        deck = []
+        deck: list[Card] = []
         tc = TERRITORY_COUNT//3
         for army in range(3):
             for territory in range(tc):
@@ -33,7 +34,7 @@ class Card:
         return deck
 
     @classmethod
-    def draw(cls, hands: list["Hand"], deck: list["Card"], n: int) -> list["Card"]:
+    def draw(cls, hands: list["Hand"], deck: list["Card"], n: int):
         num_hands = len(hands)
 
         for i in range(n * num_hands):

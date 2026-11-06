@@ -55,6 +55,22 @@ class CountryEnum(Enum):
     NEW_GUINEA = 39
     INDONESIA = 40
     WESTERN_AUSTRALIA = 41
+    
+    @staticmethod
+    def countries_in_continent(continent : int) -> list[int]: 
+        if continent == 0: # NA
+            return list(range(0, 9))
+        if continent == 1: # SA
+            return list(range(9, 13))
+        if continent == 2: # Africa
+            return list(range(13, 19))
+        if continent == 3: # Europe
+            return list(range(19, 26))
+        if continent == 4: # Asia
+            return list(range(26, 38))
+        if continent == 5: # Oceania
+            return list(range(38, 42))
+        return []
 
     @staticmethod
     def country_id_to_continent_id(country : "CountryEnum | int") -> int:
