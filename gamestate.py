@@ -91,6 +91,10 @@ class GameState:
         self.current_player = self.players[0]
         self.deal_territories()
         self.current_stage = Stage.ATTACK
+
+        #ensure self.armies_remaining is set
+        for player in self.players:
+            self.armies_remaining[player] = 0
         return True
 
     def deal_territories(self):
@@ -123,10 +127,9 @@ class GameState:
             # print("Got here :)")
             return list(filter(lambda x: x.owner is None, self.territories))
         
-        if self.current_stage == Stage.TERRITORY_REINFORCEMENT:
+        if self.current_stage in (Stage.TERRITORY_REINFORCEMENT, Stage.PLACE_ARMIES):
             # all tiles owned by the current player
             return list(filter(lambda x: x.owner == self.current_player, self.territories))
-        
             
         # elif self.current_stage: 
         return []
@@ -205,15 +208,13 @@ class GameState:
         #     self.end_turn()
         #     return True
 
-        if self.current_stage == Stage.TERRITORY_REINFORCEMENT:
+        if self.current_stage == Stage.PLACE_ARMIES:
             self.territories[id].armies += 1
             self.armies_remaining[player] -= 1 
-            if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
-                self.current_stage = Stage.PLACE_ARMIES
-            self.end_turn()
-            return True
-        
-        
+            if self.armies_remaining[player] == 0:
+                self.current_stage = Stage.ATTACK
+            return True       
+
         self.selected = self.territories[id]
         return True
 
@@ -242,8 +243,8 @@ class GameState:
             self.current_stage = Stage.CHECK_DEFEAT
 
     def can_skip(self, player: Player) -> bool:
-        if (player != self.current_player or self.current_stage == Stage.TERRITORY_REINFORCEMENT or 
-            self.current_stage == Stage.TERRITORY_SELECTION):
+        if player != self.current_player or self.current_stage in (
+                Stage.TERRITORY_REINFORCEMENT, Stage.TERRITORY_SELECTION, Stage.PLACE_ARMIES):
             return False
 
         if self.current_stage == Stage.ATTACK:

@@ -37,7 +37,7 @@ class RiskGame(arcade.View):
         # Set background color
         self.background_color = BACKGROUND_COLOR
         self.map = None
-        self.buttons = []
+        self.buttons: list[CircleButton] = []
         self.mouse_pos = (0, 0)
         self.end_turn_button = None
         self.roll_button = None
@@ -45,7 +45,7 @@ class RiskGame(arcade.View):
         self.state = GameState.from_file("edges.txt", True)
         self.owner: Player # The owner of the current view
 
-    def setup(self, player_count):
+    def setup(self, player_count: int):
         with open("relpos.txt", "r", encoding="utf-8") as file:
             for (i, line) in enumerate(file.readlines()):
                 rx, ry = line.split(", ")
@@ -143,7 +143,15 @@ class RiskGame(arcade.View):
 
     def roll(self):
         """Roll max dice for both sides for attack."""
-        self.state.attack_roll(self.owner)
+
+        # select dice verifies predicates
+        if not self.state.select_dice(self.owner, self.state.active_dice(self.owner)): 
+            return
+        assert self.state.attacked is not None # 
+        assert self.state.attacked.owner is not None # obviously implied by above
+        self.state.select_dice(self.state.attacked.owner, self.state.active_dice(self.state.attacked.owner))
+
+        self.state.do_damage()
 
     def on_key_press(self, symbol: int, modifiers: int):
         if symbol == arcade.key.ESCAPE:
@@ -170,7 +178,7 @@ class RiskGame(arcade.View):
             `x` and `y` are current position, `dx` and `dy` are distance from last mouse event """
         pass
 
-    def on_mouse_motion(self, x, y, dx, dy):
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         self.mouse_pos = (x, y)
         for button in self.buttons:
             button.check_hover(x, y)
@@ -200,7 +208,12 @@ class RiskGame(arcade.View):
             button.draw()
 
         if self.end_turn_button:
+            if self.state.can_skip(self.owner):
+                self.end_turn_button.active = True
+            else:
+                self.end_turn_button.active = False
             self.end_turn_button.draw()
+            
         if self.roll_button:
             self.roll_button.draw()
         if self.quit_button:
@@ -289,15 +302,13 @@ class RiskGame(arcade.View):
 
 
             text = "X" if i >= len(dice_rolls) else str(dice_rolls[i])
-            arcade.draw_text(
-                            text,
-                            x + size / 2,
-                            y + size / 2,
-                            arcade.color.BLACK,
-                            font_size=24,
-                            anchor_x="center",
-                            anchor_y="center"
-                        )
+            label = arcade.Text(
+                                text,
+                                x + size / 2, y + size / 2, arcade.color.BLACK, font_size=24, anchor_x="center",
+                                                            anchor_y="center"
+                            )
+            label.draw()
+
 
     def draw_tooltip(self):
         for (i, button) in enumerate(self.buttons):

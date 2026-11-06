@@ -1,25 +1,27 @@
 import arcade
+from arcade.types import Color
 import math
+from collections.abc import Callable
 
 class CircleButton:
     """A custom circular button with text."""
-    def __init__(self, center_x, center_y, radius, text, action=None,
+    def __init__(self, center_x: int, center_y: int, radius: int, text: str, action=None,
             normal_color=arcade.color.ORANGE, hover_color=arcade.color.ANTIQUE_RUBY,
             inactive_color=arcade.color.GRAY):
         self.center_x = center_x
         self.center_y = center_y
         self.radius = radius
-        self.text = text
+        self.text: str = text
         self.normal_color = normal_color
         self.hover_color = hover_color
-        self.action = action  # The function to run when clicked
+        self.action: None | Callable[[], None] = action  # The function to run when clicked
         self.is_hovered = False
-        self.active = True
+        self.active: bool = True
         self.inactive_color = inactive_color
-        self.outline = None   # Highlight ring
+        self.outline: Color | None = None   # Highlight ring
         self.outline_width = 3
 
-    def set_active(self, active):
+    def set_active(self, active: bool):
         self.active = active
 
     def draw(self):
@@ -35,17 +37,12 @@ class CircleButton:
                                        self.outline, self.outline_width)
         
         # Draw the text centered inside the circle
-        arcade.draw_text(
-            self.text,
-            self.center_x,
-            self.center_y,
-            arcade.color.WHITE,
-            font_size=14,
-            anchor_x="center",
-            anchor_y="center"
-        )
+        label = arcade.Text(self.text, self.center_x, self.center_y, arcade.color.WHITE, font_size = 14, 
+                    anchor_x="center",
+                    anchor_y="center")
+        label.draw()
 
-    def check_hover(self, mouse_x, mouse_y):
+    def check_hover(self, mouse_x: int, mouse_y: int):
         """Check if the mouse cursor is inside the circle."""
         # Calculate distance between mouse and center of the circle
         distance = math.sqrt((mouse_x - self.center_x) ** 2 + (mouse_y - self.center_y) ** 2)

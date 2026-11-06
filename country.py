@@ -55,9 +55,9 @@ class CountryEnum(Enum):
     NEW_GUINEA = 39
     INDONESIA = 40
     WESTERN_AUSTRALIA = 41
-    
+
     @staticmethod
-    def countries_in_continent(continent : int) -> list[int]: 
+    def countries_in_continent(continent : int) -> list[int]:
         if continent == 0: # NA
             return list(range(0, 9))
         if continent == 1: # SA
@@ -87,15 +87,14 @@ class CountryEnum(Enum):
 
         if id <= 18:
             return id - 13
-        
+
         if id <= 25:
             return id - 19
 
         if id <= 37:
             return id - 26
 
-        else:
-            return id - 38
+        return id - 38
 
 class Country:
     def __init__(self, type: CountryEnum):
