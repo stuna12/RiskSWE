@@ -210,6 +210,7 @@ class GameState:
                 clicked.armies += self.selected.armies - 1
                 self.selected.armies = 1
                 self.end_turn()
+            return True
         # if self.current_stage == Stage.TERRITORY_SELECTION:
         #     self.territories[id].armies += 1
         #     self.armies_remaining[player] -= 1 
@@ -273,6 +274,14 @@ class GameState:
 
         return False
     
+
+    def can_skip_fortify(self, player):
+        return player == self.current_player and self.current_stage == Stage.FORTIFY
+
+    def skip_fortify(self):
+        """Skip fortifying. end_turn clears selection."""
+        if self.current_stage == Stage.FORTIFY:
+            self.end_turn()
 
     def start_turn(self, player: Player):
         # Automatically get `max(controlled_territories // 3, 3)` armies

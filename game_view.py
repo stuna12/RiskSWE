@@ -42,6 +42,7 @@ class RiskGame(arcade.View):
         self.end_turn_button = None
         self.roll_button = None
         self.quit_button = None
+        self.skip_fortify_button = None
         self.state = GameState.from_file("edges.txt", True)
         self.owner: Player # The owner of the current view
 
@@ -66,6 +67,14 @@ class RiskGame(arcade.View):
             radius = 50,
             text = "End Turn",
             action = self.state.end_turn,
+        )
+
+        self.skip_fortify_button = CircleButton(
+            center_x = self.window.width - 200,
+            center_y = 80,
+            radius = 50,
+            text = "Skip Fortify",
+            action = self.state.skip_fortify,
         )
 
         self.roll_button = CircleButton(
@@ -165,6 +174,8 @@ class RiskGame(arcade.View):
                 return
             if self.roll_button and self.roll_button.on_mouse_press():
                 return
+            if self.skip_fortify_button and self.skip_fortify_button.on_mouse_press():
+                return
             if self.quit_button and self.quit_button.on_mouse_press():
                 return
 
@@ -186,6 +197,8 @@ class RiskGame(arcade.View):
             self.end_turn_button.check_hover(x, y)
         if self.roll_button:
             self.roll_button.check_hover(x, y)
+        if self.skip_fortify_button:
+            self.skip_fortify_button.check_hover(x, y)
         if self.quit_button:
             self.quit_button.check_hover(x, y)
 
@@ -213,6 +226,10 @@ class RiskGame(arcade.View):
             else:
                 self.end_turn_button.active = False
             self.end_turn_button.draw()
+
+        if self.skip_fortify_button:
+            self.skip_fortify_button.active = self.state.can_skip_fortify(self.owner)
+            self.skip_fortify_button.draw()
             
         if self.roll_button:
             self.roll_button.draw()
