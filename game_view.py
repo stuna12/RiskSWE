@@ -134,7 +134,8 @@ class RiskGame(arcade.View):
                 btn.hover_color = btn.normal_color
 
     def update_highlights(self):
-        """White ring on the selected territory, red ring on the target, yellow rings on clickable ones."""
+        """White ring on the selected territory, red ring on the target,
+        yellow rings on clickable ones."""
         for btn in self.buttons:
             btn.outline = None
         interactible = self.state.reachable_tiles(self.owner)
@@ -154,11 +155,12 @@ class RiskGame(arcade.View):
         """Roll max dice for both sides for attack."""
 
         # select dice verifies predicates
-        if not self.state.select_dice(self.owner, self.state.active_dice(self.owner)): 
+        if not self.state.select_dice(self.owner, self.state.active_dice(self.owner)):
             return
-        assert self.state.attacked is not None # 
+        assert self.state.attacked is not None
         assert self.state.attacked.owner is not None # obviously implied by above
-        self.state.select_dice(self.state.attacked.owner, self.state.active_dice(self.state.attacked.owner))
+        defender = self.state.attacked.owner
+        self.state.select_dice(defender, self.state.active_dice(defender))
 
         self.state.do_damage()
 
@@ -185,7 +187,7 @@ class RiskGame(arcade.View):
                     return #exit before processing all buttons
 
     def on_mouse_drag(self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int):
-        """ Called whenever the mouse is clicked and dragged 
+        """ Called whenever the mouse is clicked and dragged
             `x` and `y` are current position, `dx` and `dy` are distance from last mouse event """
         pass
 
@@ -230,7 +232,7 @@ class RiskGame(arcade.View):
         if self.skip_fortify_button:
             self.skip_fortify_button.active = self.state.can_skip_fortify(self.owner)
             self.skip_fortify_button.draw()
-            
+
         if self.roll_button:
             self.roll_button.draw()
         if self.quit_button:
@@ -252,7 +254,8 @@ class RiskGame(arcade.View):
         arcade.Text("GAME OVER", self.window.width / 2, self.window.height / 2 + 40,
                     arcade.color.WHITE, font_size=48, bold=True,
                     anchor_x="center", anchor_y="center").draw()
-        arcade.Text(f"{self.state.winner.name} wins!", self.window.width / 2, self.window.height / 2 - 30,
+        arcade.Text(f"{self.state.winner.name} wins!",
+                    self.window.width / 2, self.window.height / 2 - 30,
                     arcade.color.WHITE, font_size=28,
                     anchor_x="center", anchor_y="center").draw()
         if self.quit_button:
@@ -263,11 +266,14 @@ class RiskGame(arcade.View):
         player = self.state.current_player
         if player is None:
             return
-        label = arcade.Text(f"{player.name}'s Turn; {self.state.current_stage.name}; Cards: {len(player.hand.cards)}", 0, 0, arcade.color.WHITE, font_size=18, bold=True)
+        text = (f"{player.name}'s Turn; {self.state.current_stage.name}; "
+                f"Cards: {len(player.hand.cards)}")
+        label = arcade.Text(text, 0, 0, arcade.color.WHITE, font_size=18, bold=True)
         label.x = 16
         label.y = self.window.height - label.content_height - 16
         arcade.draw_rect_filled(
-            arcade.LBWH(label.x - 8, label.y - 6, label.content_width + 16, label.content_height + 12),
+            arcade.LBWH(label.x - 8, label.y - 6,
+                        label.content_width + 16, label.content_height + 12),
             Color(player.color[0], player.color[1], player.color[2], 255)
         )
         label.draw()
@@ -288,7 +294,8 @@ class RiskGame(arcade.View):
         label.x = 16
         label.y = self.window.height - 90
         arcade.draw_rect_filled(
-            arcade.LBWH(label.x - 8, label.y - 6, label.content_width + 16, label.content_height + 12),
+            arcade.LBWH(label.x - 8, label.y - 6,
+                        label.content_width + 16, label.content_height + 12),
             bg
         )
         label.draw()
@@ -313,7 +320,9 @@ class RiskGame(arcade.View):
             if i < active:
                 arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), dice_color)
             else:
-                arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), (dice_color[0] // 2, dice_color[1] // 2, dice_color[2] // 2)) #inactive, color greyish
+                # inactive, color grayish
+                dim = (dice_color[0] // 2, dice_color[1] // 2, dice_color[2] // 2)
+                arcade.draw_rect_filled(arcade.LBWH(x, y, size, size), dim)
 
             arcade.draw_rect_outline(arcade.LBWH(x, y, size, size), arcade.color.BLACK, 2)
 
@@ -321,7 +330,8 @@ class RiskGame(arcade.View):
             text = "X" if i >= len(dice_rolls) else str(dice_rolls[i])
             label = arcade.Text(
                                 text,
-                                x + size / 2, y + size / 2, arcade.color.BLACK, font_size=24, anchor_x="center",
+                                x + size / 2, y + size / 2, arcade.color.BLACK,
+                                font_size=24, anchor_x="center",
                                                             anchor_y="center"
                             )
             label.draw()
@@ -335,8 +345,10 @@ class RiskGame(arcade.View):
                     0, 0, arcade.color.WHITE, font_size=12
                 )
 
-                label.x = min(self.mouse_pos[0] - label.content_width / 2, self.window.width - label.content_width - 12)
-                label.y = min(self.mouse_pos[1] + 20, self.window.height - label.content_height - 12)
+                label.x = min(self.mouse_pos[0] - label.content_width / 2,
+                              self.window.width - label.content_width - 12)
+                label.y = min(self.mouse_pos[1] + 20,
+                              self.window.height - label.content_height - 12)
 
                 arcade.draw_rect_filled(
                     arcade.LBWH(label.x - 6, label.y - 10,

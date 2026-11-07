@@ -30,7 +30,7 @@ class Stage(Enum):
     GAME_OVER = 17
 
 # important invariants:
-# selected > attacked > attacker_rolls > defender_rolls, 
+# selected > attacked > attacker_rolls > defender_rolls,
 # a larger one being None means all smaller must be None
 
 INFANTRY_COUNT = [0,0,40,35,30,25,20]
@@ -70,13 +70,17 @@ class GameState:
         return cls(territories, two_player)
 
     def add_player(self, player: Player) -> bool:
-        if self.current_stage != Stage.PLAYERS_JOINING or (self.two_player and len(self.players) >= 2) or len(self.players) >= 6:
+        if (self.current_stage != Stage.PLAYERS_JOINING
+                or (self.two_player and len(self.players) >= 2)
+                or len(self.players) >= 6):
             return False
         self.players.append(player)
         return True
 
     def start_play(self) -> bool:
-        if self.current_stage != Stage.PLAYERS_JOINING or len(self.players) < 2 or (not self.two_player and len(self.players) < 3):
+        if (self.current_stage != Stage.PLAYERS_JOINING
+                or len(self.players) < 2
+                or (not self.two_player and len(self.players) < 3)):
             return False
 
         # disabled setup for now
@@ -121,7 +125,7 @@ class GameState:
             # target chosen: click either one to back out
             return [self.selected, self.attacked]
 
-        
+
         if self.current_stage == Stage.TERRITORY_SELECTION:
             # all tiles with no owner
             # print("Got here :)")
@@ -134,14 +138,14 @@ class GameState:
                             or (x.owner == player and x.type.value in self.selected.adj)]
             return [x for x in self.territories
                             if x.owner == player and x.armies > 1]
-        
+
         if self.current_stage in (Stage.TERRITORY_REINFORCEMENT, Stage.PLACE_ARMIES):
             # all tiles owned by the current player
             return list(filter(lambda x: x.owner == self.current_player, self.territories))
 
-        
 
-        # elif self.current_stage: 
+
+        # elif self.current_stage:
         return []
 
     def active_dice(self, player: Player) -> int:
@@ -152,7 +156,7 @@ class GameState:
         if player == self.attacked.owner:
             return min(2, self.attacked.armies)
         return 0
-        
+
     def rolls(self, player: Player) -> list[int]:
         if player == self.current_player and self.attacker_rolls is not None:
             return self.attacker_rolls
@@ -165,23 +169,26 @@ class GameState:
     def select_dice(self, player:Player, count:int) -> bool:
         if count > self.active_dice(player) or self.current_stage != Stage.ATTACK:
             return False
-        
-        if player == self.current_player and self.attacked is not None and self.attacker_rolls is None:
+
+        if (player == self.current_player and self.attacked is not None
+                and self.attacker_rolls is None):
             self.attacker_rolls = [0] * count
             for i in range(count):
                 self.attacker_rolls[i] = randint(1, 6)
             return True
-        
-        if self.attacked is not None and player == self.attacked.owner and self.attacker_rolls is not None:
+
+        if (self.attacked is not None and player == self.attacked.owner
+                and self.attacker_rolls is not None):
             self.defender_rolls = [0] * count
             for i in range(count):
                 self.defender_rolls[i] = randint(1, 6)
             return True
-        
+
         return False
-    
+
     def select_territory(self, player : Player, id: int):
-        if player != self.current_player or self.territories[id] not in self.reachable_tiles(player):
+        if (player != self.current_player
+                or self.territories[id] not in self.reachable_tiles(player)):
             return False
         clicked = self.territories[id]
 
@@ -200,7 +207,7 @@ class GameState:
                 # second click: target
                 self.attacked = clicked
             return True
-        
+
         if self.current_stage == Stage.FORTIFY:
             if clicked == self.selected:
                 self.selected = None
@@ -213,7 +220,7 @@ class GameState:
             return True
         # if self.current_stage == Stage.TERRITORY_SELECTION:
         #     self.territories[id].armies += 1
-        #     self.armies_remaining[player] -= 1 
+        #     self.armies_remaining[player] -= 1
         #     self.territories[id].owner = self.current_player
         #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
         #         self.current_stage = Stage.TERRITORY_REINFORCEMENT
@@ -222,7 +229,7 @@ class GameState:
         #
         # if self.current_stage == Stage.TERRITORY_REINFORCEMENT:
         #     self.territories[id].armies += 1
-        #     self.armies_remaining[player] -= 1 
+        #     self.armies_remaining[player] -= 1
         #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
         #         self.current_stage = Stage.PLACE_ARMIES
         #     self.end_turn()
@@ -230,10 +237,10 @@ class GameState:
 
         if self.current_stage == Stage.PLACE_ARMIES:
             self.territories[id].armies += 1
-            self.armies_remaining[player] -= 1 
+            self.armies_remaining[player] -= 1
             if self.armies_remaining[player] == 0:
                 self.current_stage = Stage.ATTACK
-            return True       
+            return True
 
         self.selected = self.territories[id]
         return True
@@ -273,7 +280,7 @@ class GameState:
             return True
 
         return False
-    
+
 
     def can_skip_fortify(self, player):
         return player == self.current_player and self.current_stage == Stage.FORTIFY
@@ -285,8 +292,9 @@ class GameState:
 
     def start_turn(self, player: Player):
         # Automatically get `max(controlled_territories // 3, 3)` armies
-        self.armies_remaining[player] += max(len(player.controlled_territories(self.territories)) // 3, 3)
-        
+        owned = len(player.controlled_territories(self.territories))
+        self.armies_remaining[player] += max(owned // 3, 3)
+
         # calculate continent bonuses
         bonuses: list[int] = [5, 2, 3, 5, 7, 2]
         for i in range(6):
@@ -296,14 +304,14 @@ class GameState:
                 has_all &= self.territories[country_id].owner == player
             if has_all:
                 self.armies_remaining[player] += bonuses[i]
-        
+
         # if has cards to turn in, set to Stage.TURN_IN_CARDS
         if player.hand.can_use():
             self.current_stage = Stage.TURN_IN_CARDS
         # otherwise, move straight to Stage.place_armies
         else:
             self.current_stage = Stage.PLACE_ARMIES
-        
+
 
     def end_turn(self):
         if self.current_stage == Stage.GAME_OVER:
@@ -318,17 +326,19 @@ class GameState:
         if self.current_stage == Stage.ATTACK:
             self.current_stage = Stage.FORTIFY
             return
-            
-        
-        self.current_player = self.players[(self.players.index(self.current_player) + 1) % len(self.players)]
+
+
+        next_index = (self.players.index(self.current_player) + 1) % len(self.players)
+        self.current_player = self.players[next_index]
         self.start_turn(self.current_player)
         # TODO: enable once PLACE_ARMIES is playable and start_play fills armies_remaining
         # if self.current_stage not in (Stage.TERRITORY_SELECTION, Stage.TERRITORY_REINFORCEMENT):
         #     self.start_turn(self.current_player)
 
 
-    def do_damage(self) -> bool:
-        if self.attacker_rolls is None or self.defender_rolls is None or self.attacked is None or self.selected is None:
+    def do_damage(self):
+        if (self.attacker_rolls is None or self.defender_rolls is None
+                or self.attacked is None or self.selected is None):
             return False
 
         # keep a sorted copy for the UI, highest first
@@ -362,7 +372,8 @@ class GameState:
         return True
 
     def check_defeat(self, defender):
-        """Remove `defender` if they lost their last territory, end the game if one player is left."""
+        """Remove defender if they lost their last territory. 
+        Ends the game if only one player is left."""
         if defender is None or defender.controlled_territories(self.territories):
             return
         self.players.remove(defender)
