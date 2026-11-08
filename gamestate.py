@@ -64,7 +64,7 @@ class GameState:
 
         territories: list[Country] = []
         for i in range(len(edges)):
-            territories.append(Country(type=CountryEnum(i)))
+            territories.append(Country(country_type=CountryEnum(i)))
         for (i,adj) in enumerate(edges):
             territories[i].adj = adj
 
@@ -198,7 +198,7 @@ class GameState:
                 # pick a different target
                 self.attacked = None
             elif clicked == self.selected:
-                # deselect attacker, drops target too
+                # deselect attacker (and target)
                 self.selected = None
                 self.attacked = None
             elif self.selected is None:

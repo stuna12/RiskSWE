@@ -1,7 +1,26 @@
+"""
+Country definitions: territory enum, continent helpers,
+and Country class that tracks territory game state.
+"""
+
 from enum import Enum
-import player
+
+# Territory id ranges for each continent:
+# 0 = North America, 1 = South America, 2 = Africa,
+# 3 = Europe, 4 = Asia, 5 = Australia
+CONTINENT_RANGES = [
+    range(0, 9),
+    range(9, 13),
+    range(13, 19),
+    range(19, 26),
+    range(26, 38),
+    range(38, 42),
+]
+
 
 class CountryEnum(Enum):
+    """Every territory numbered in the order of edges.txt"""
+
     # NORTH AMERICA
     ALASKA = 0
     ALBERTA = 1
@@ -57,48 +76,35 @@ class CountryEnum(Enum):
     WESTERN_AUSTRALIA = 41
 
     @staticmethod
-    def countries_in_continent(continent : int) -> list[int]:
-        if continent == 0: # NA
-            return list(range(0, 9))
-        if continent == 1: # SA
-            return list(range(9, 13))
-        if continent == 2: # Africa
-            return list(range(13, 19))
-        if continent == 3: # Europe
-            return list(range(19, 26))
-        if continent == 4: # Asia
-            return list(range(26, 38))
-        if continent == 5: # Oceania
-            return list(range(38, 42))
+    def countries_in_continent(continent):
+        """
+        Returns territory ids that belong to the continent id.
+        """
+        if 0 <= continent < len(CONTINENT_RANGES):
+            return list(CONTINENT_RANGES[continent])
         return []
 
     @staticmethod
-    def country_id_to_continent_id(country : "CountryEnum | int") -> int:
-        if isinstance(country, CountryEnum):
-            id = country.value
-        else:
-            id = country
+    def country_id_to_continent_id(country):
+        """
+        Returns position of a territory within its own continent.
+        Used to label map buttons
+        """
+        country_id = country.value if isinstance(country, CountryEnum) else country
 
-        if id <= 8:
-            return id
+        for continent in CONTINENT_RANGES:
+            if country_id in continent:
+                return country_id - continent.start
 
-        if id <= 12:
-            return id - 9
+        return country_id - CONTINENT_RANGES[-1].start
 
-        if id <= 18:
-            return id - 13
-
-        if id <= 25:
-            return id - 19
-
-        if id <= 37:
-            return id - 26
-
-        return id - 38
 
 class Country:
-    def __init__(self, type: CountryEnum):
-        self.type = type
+    """A single territory: adjacency list, owner, and army count."""
+
+    def __init__(self, country_type):
+        self.type = country_type
         self.adj: list[int] = []
-        self.owner: "player.Player | None" = None
+        # set to a Player when territory is claimed
+        self.owner = None
         self.armies: int = 0
