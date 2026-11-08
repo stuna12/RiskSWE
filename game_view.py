@@ -1,3 +1,4 @@
+# pylint: disable=C0114, C0116
 import math
 import random
 import arcade
@@ -32,6 +33,8 @@ def roll_dice(count):
     return sorted((random.randint(1, 6) for _ in range(count)), reverse=True)
 
 class RiskGame(arcade.View):
+    """Main game screen: draws map and passes clicks to game state"""
+
     def __init__(self):
         super().__init__()
         # Set background color
@@ -39,10 +42,7 @@ class RiskGame(arcade.View):
         self.map = None
         self.buttons: list[CircleButton] = []
         self.mouse_pos = (0, 0)
-        self.end_turn_button = None
-        self.roll_button = None
-        self.quit_button = None
-        self.skip_fortify_button = None
+        self.action_buttons = {}
         self.state = GameState.from_file("edges.txt", True)
         self.owner: Player # The owner of the current view
 
@@ -61,39 +61,38 @@ class RiskGame(arcade.View):
 
         self.map = arcade.load_texture("./Risk_game_map.png")
 
-        self.end_turn_button = CircleButton(
-            center_x = self.window.width - 80,
-            center_y = 80,
-            radius = 50,
-            text = "End Turn",
-            action = self.state.end_turn,
-        )
-
-        self.skip_fortify_button = CircleButton(
-            center_x = self.window.width - 200,
-            center_y = 80,
-            radius = 50,
-            text = "Skip Fortify",
-            action = self.state.skip_fortify,
-        )
-
-        self.roll_button = CircleButton(
-            center_x = 80,
-            center_y = 80,
-            radius = 50,
-            text = "Roll",
-            action = self.roll,
-        )
-
-        self.quit_button = CircleButton(
-            center_x = self.window.width - 50,
-            center_y = self.window.height - 50,
-            radius = 50,
-            text = "Quit Game",
-            action = arcade.close_window,
-            normal_color = arcade.color.DARK_RED,
-            hover_color = arcade.color.RED,
-        )
+        self.action_buttons = {
+            "end_turn": CircleButton(
+                center_x = self.window.width - 80,
+                center_y = 80,
+                radius = 50,
+                text = "End Turn",
+                action = self.state.end_turn,
+            ),
+            "skip_fortify": CircleButton(
+                center_x = self.window.width - 200,
+                center_y = 80,
+                radius = 50,
+                text = "Skip Fortify",
+                action = self.state.skip_fortify,
+            ),
+            "roll": CircleButton(
+                center_x = 80,
+                center_y = 80,
+                radius = 50,
+                text = "Roll",
+                action = self.roll,
+            ),
+            "quit": CircleButton(
+                center_x = self.window.width - 50,
+                center_y = self.window.height - 50,
+                radius = 50,
+                text = "Quit Game",
+                action = arcade.close_window,
+                normal_color = arcade.color.DARK_RED,
+                hover_color = arcade.color.RED,
+            ),
+        }
 
         # create & shuffle set of cards
 
@@ -172,41 +171,24 @@ class RiskGame(arcade.View):
         """ Called whenever the mouse button is clicked. """
 
         if button == arcade.MOUSE_BUTTON_LEFT:
-            if self.end_turn_button and self.end_turn_button.on_mouse_press():
-                return
-            if self.roll_button and self.roll_button.on_mouse_press():
-                return
-            if self.skip_fortify_button and self.skip_fortify_button.on_mouse_press():
-                return
-            if self.quit_button and self.quit_button.on_mouse_press():
-                return
+            for action_button in self.action_buttons.values():
+                if action_button.on_mouse_press():
+                    return
 
             for (i, btn) in enumerate(self.buttons):
                 if btn.on_mouse_press():
                     self.state.select_territory(self.owner, i)
                     return #exit before processing all buttons
 
-    def on_mouse_drag(self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int):
-        """ Called whenever the mouse is clicked and dragged
-            `x` and `y` are current position, `dx` and `dy` are distance from last mouse event """
-        pass
-
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         self.mouse_pos = (x, y)
         for button in self.buttons:
             button.check_hover(x, y)
-        if self.end_turn_button:
-            self.end_turn_button.check_hover(x, y)
-        if self.roll_button:
-            self.roll_button.check_hover(x, y)
-        if self.skip_fortify_button:
-            self.skip_fortify_button.check_hover(x, y)
-        if self.quit_button:
-            self.quit_button.check_hover(x, y)
+        for action_button in self.action_buttons.values():
+            action_button.check_hover(x, y)
 
     def on_mouse_release(self, x: int, y: int, button: int, modifiers: int):
         """ Called whenever a button is released """
-        pass
 
     def on_update(self, delta_time: float):
         pass
@@ -222,21 +204,11 @@ class RiskGame(arcade.View):
         for button in self.buttons:
             button.draw()
 
-        if self.end_turn_button:
-            if self.state.can_skip(self.owner):
-                self.end_turn_button.active = True
-            else:
-                self.end_turn_button.active = False
-            self.end_turn_button.draw()
-
-        if self.skip_fortify_button:
-            self.skip_fortify_button.active = self.state.can_skip_fortify(self.owner)
-            self.skip_fortify_button.draw()
-
-        if self.roll_button:
-            self.roll_button.draw()
-        if self.quit_button:
-            self.quit_button.draw()
+        if self.action_buttons:
+            self.action_buttons["end_turn"].active = self.state.can_skip(self.owner)
+            self.action_buttons["skip_fortify"].active = self.state.can_skip_fortify(self.owner)
+            for action_button in self.action_buttons.values():
+                action_button.draw()
         self.draw_dice()
         self.draw_turn_banner()
         self.draw_phase_banner()
@@ -258,8 +230,7 @@ class RiskGame(arcade.View):
                     self.window.width / 2, self.window.height / 2 - 30,
                     arcade.color.WHITE, font_size=28,
                     anchor_x="center", anchor_y="center").draw()
-        if self.quit_button:
-            self.quit_button.draw()
+        self.action_buttons["quit"].draw()
 
     def draw_turn_banner(self):
         """Top-left banner showing whose turn it is."""

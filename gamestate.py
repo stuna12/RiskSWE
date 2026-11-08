@@ -1,19 +1,17 @@
+# pylint: disable=C0114, C0116
 import json
 from enum import Enum
 from random import randint, shuffle
 
-from arcade.types import Color
-import arcade.color
-
 from country import Country, CountryEnum
 from player import Player
-from human_player import HumanPlayer
 from card import Card
 
 
 
 
 class Stage(Enum):
+    """Phases the game moves through."""
     TERRITORY_SELECTION = 0                 #initial territory selection
     TERRITORY_REINFORCEMENT = 1
     PLACE_ARMIES = 2
@@ -36,6 +34,8 @@ class Stage(Enum):
 INFANTRY_COUNT = [0,0,40,35,30,25,20]
 
 class GameState:
+    """Holds all game data and rules for changing it."""
+
     def __init__(self, territories: list[Country], two_player: bool = False):
         self.territories: list[Country] = territories
         self.two_player = two_player
@@ -186,11 +186,11 @@ class GameState:
 
         return False
 
-    def select_territory(self, player : Player, id: int):
+    def select_territory(self, player, territory_id):
         if (player != self.current_player
-                or self.territories[id] not in self.reachable_tiles(player)):
+                or self.territories[territory_id] not in self.reachable_tiles(player)):
             return False
-        clicked = self.territories[id]
+        clicked = self.territories[territory_id]
 
         if self.current_stage == Stage.ATTACK:
             if clicked == self.attacked:
@@ -213,22 +213,22 @@ class GameState:
                 self.selected = None
             elif self.selected is None:
                 self.selected = clicked
-            else: # TODO: allow user to select number
+            else: # currently moves every army but one
                 clicked.armies += self.selected.armies - 1
                 self.selected.armies = 1
                 self.end_turn()
             return True
         # if self.current_stage == Stage.TERRITORY_SELECTION:
-        #     self.territories[id].armies += 1
+        #     self.territories[territory_id].armies += 1
         #     self.armies_remaining[player] -= 1
-        #     self.territories[id].owner = self.current_player
+        #     self.territories[territory_id].owner = self.current_player
         #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
         #         self.current_stage = Stage.TERRITORY_REINFORCEMENT
         #     self.end_turn()
         #     return True
         #
         # if self.current_stage == Stage.TERRITORY_REINFORCEMENT:
-        #     self.territories[id].armies += 1
+        #     self.territories[territory_id].armies += 1
         #     self.armies_remaining[player] -= 1
         #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
         #         self.current_stage = Stage.PLACE_ARMIES
@@ -236,13 +236,13 @@ class GameState:
         #     return True
 
         if self.current_stage == Stage.PLACE_ARMIES:
-            self.territories[id].armies += 1
+            self.territories[territory_id].armies += 1
             self.armies_remaining[player] -= 1
             if self.armies_remaining[player] == 0:
                 self.current_stage = Stage.ATTACK
             return True
 
-        self.selected = self.territories[id]
+        self.selected = self.territories[territory_id]
         return True
 
     def attack_roll(self, player: Player) -> bool:
@@ -331,7 +331,7 @@ class GameState:
         next_index = (self.players.index(self.current_player) + 1) % len(self.players)
         self.current_player = self.players[next_index]
         self.start_turn(self.current_player)
-        # TODO: enable once PLACE_ARMIES is playable and start_play fills armies_remaining
+        # Enable once PLACE_ARMIES is playable and start_play fills armies_remaining
         # if self.current_stage not in (Stage.TERRITORY_SELECTION, Stage.TERRITORY_REINFORCEMENT):
         #     self.start_turn(self.current_player)
 
@@ -355,7 +355,7 @@ class GameState:
                 self.selected.armies -= 1
 
         if self.attacked.armies <= 0:
-            # TODO: let the player choose how many to move
+            # currently moves as many armies as dice rolled
             moved = len(self.attacker_rolls)
             defender = self.attacked.owner
             self.attacked.owner = self.current_player
@@ -372,7 +372,7 @@ class GameState:
         return True
 
     def check_defeat(self, defender):
-        """Remove defender if they lost their last territory. 
+        """Remove defender if they lost their last territory.
         Ends the game if only one player is left."""
         if defender is None or defender.controlled_territories(self.territories):
             return
