@@ -40,3 +40,10 @@ class Card:
         for i in range(n * num_hands):
             index = i % num_hands
             hands[index].add_card(deck.pop())
+
+    def army_name(self):
+        if self.army == 0:
+            return "Infantry"
+        if self.army == 1:
+            return "Cavalry"
+        return "Artillery"

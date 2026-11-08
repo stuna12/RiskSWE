@@ -55,6 +55,7 @@ class GameState:
         self.last_attacker_rolls: list[int] = []
         self.last_defender_rolls: list[int] = []
         self.gained_armies: bool = False
+        self.selected_cards: int = []
 
     @classmethod
     def from_file(cls, edge_file: str, two_player: bool = False) -> "GameState":
@@ -244,6 +245,12 @@ class GameState:
 
         self.selected = self.territories[territory_id]
         return True
+
+    def selectable_cards(self, player: Player):
+        pass
+
+    def select_card(self, player: Player):
+        pass
 
     def attack_roll(self, player: Player) -> bool:
         """Roll max dice for both sides. Called by the Roll button."""

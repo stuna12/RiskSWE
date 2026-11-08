@@ -213,6 +213,7 @@ class RiskGame(arcade.View):
         self.draw_turn_banner()
         self.draw_phase_banner()
         self.draw_tooltip()
+        self.draw_hand()
         if self.state.winner is not None:
             self.draw_game_over()
 
@@ -329,3 +330,48 @@ class RiskGame(arcade.View):
 
                 label.draw()
                 return
+
+    def draw_hand(self):
+
+        if len(self.owner.hand.cards) == 0:
+            return
+        
+        #draw the hand in the middle 5th of the screen
+        mouse_pos = (self.window.mouse["x"], self.window.mouse["y"])
+        hand_rect = arcade.LBWH( 2 * self.window.width / 5, 0,
+                                self.window.width / 5, self.window.height/10)
+        
+        low = self.window.width * 2 / 5
+        delta = self.window.width / 5 / (len(self.owner.hand.cards) + 1)
+        for i in range(len(self.owner.hand.cards)):
+            bb = arcade.XYWH(low + delta * (i + 1), self.window.height/20, self.window.width / 20, self.window.height/10)
+            arcade.draw_rect_filled(
+                        bb,
+                                Color(255, 255, 255)
+                    )
+            arcade.draw_rect_outline(bb, Color(0, 0, 0))
+            
+            if bb.point_in_rect(mouse_pos):
+                if self.owner.hand.cards[i].wildcard:
+                    label = arcade.Text(
+                        "Wildcard",
+                        0, 0, arcade.color.WHITE, font_size=12
+                    )
+                else:
+                    label = arcade.Text(
+                        self.state.territories[self.owner.hand.cards[i].territory].type.name.replace("_", " ").title() + ", " + self.owner.hand.cards[i].army_name(),
+                        0, 0, arcade.color.WHITE, font_size=12
+                    )
+
+                label.x = min(self.mouse_pos[0] - label.content_width / 2,
+                              self.window.width - label.content_width - 12)
+                label.y = min(self.mouse_pos[1] + 20,
+                              self.window.height - label.content_height - 12)
+
+                arcade.draw_rect_filled(
+                    arcade.LBWH(label.x - 6, label.y - 10,
+                                label.content_width + 12, label.content_height + 12),
+                                Color(0, 0, 0, 200)
+                )
+
+                label.draw()
