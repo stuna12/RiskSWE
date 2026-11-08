@@ -1,3 +1,5 @@
+"""Risk cards: creation, decks, and dealing."""
+
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
@@ -8,6 +10,8 @@ if TYPE_CHECKING:
 TERRITORY_COUNT = 42
 
 class Card:
+    """A Risk card showing a territory and army type, or a wildcard."""
+
     def __init__(self, territory: int, army: int, wildcard: bool):
         self.territory = territory
         self.army = army
@@ -15,14 +19,17 @@ class Card:
 
     @classmethod
     def new_wildcard(cls) -> "Card":
+        """Create a wildcard."""
         return cls(-1, -1, True)
 
     @classmethod
     def new_card(cls, territory: int, army: int) -> "Card":
+        """Create a regular territory card."""
         return cls(territory, army, False)
 
     @classmethod
     def new_deck(cls, keep_wilds: bool = True) -> list["Card"]:
+        """Build a full (unshuffled) deck, optionally including two wildcards."""
         deck: list[Card] = []
         tc = TERRITORY_COUNT//3
         for army in range(3):
@@ -35,6 +42,7 @@ class Card:
 
     @classmethod
     def draw(cls, hands: list["Hand"], deck: list["Card"], n: int):
+        """Deal n cards to each hand, round-robin, from the top of the deck."""
         num_hands = len(hands)
 
         for i in range(n * num_hands):
@@ -42,6 +50,7 @@ class Card:
             hands[index].add_card(deck.pop())
 
     def army_name(self):
+        """Return the display name of this card's army type."""
         if self.army == 0:
             return "Infantry"
         if self.army == 1:

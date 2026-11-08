@@ -24,7 +24,8 @@ class ArtificialPlayer(Player):
         default=0)
 
 
-    def reinforcement_priority(self, territory: Country, territories: list[Country], placements: list[Country]) -> int:
+    def reinforcement_priority(self, territory: Country, territories: list[Country],
+                               placements: list[Country]) -> int:
         """
         Determines the priority that a territory
         needs to be reinforced by, taking into account
@@ -32,7 +33,8 @@ class ArtificialPlayer(Player):
         and planned amount of troops to be reinforced to
         the territory.
         """
-        return self.border_threat(territory, territories) - (territory.armies + placements.count(territory))
+        planned = territory.armies + placements.count(territory)
+        return self.border_threat(territory, territories) - planned
 
 
     def attack_advantage(self, *pair) -> int:
@@ -62,7 +64,8 @@ class ArtificialPlayer(Player):
         for _ in range(troops):
             best = border[0]
             for territory in border:
-                if self.reinforcement_priority(territory, territories, placements) > self.reinforcement_priority(best, territories, placements):
+                if (self.reinforcement_priority(territory, territories, placements)
+                        > self.reinforcement_priority(best, territories, placements)):
                     best = territory
 
             placements.append(best)
@@ -97,7 +100,8 @@ class ArtificialPlayer(Player):
         Returns the territory that needs the most fortification, if it can be fortified. 
         Returns None otherwise.
         """
-        best = None
+        best: tuple[Country, Country, int] | None = None
+        best_amount = 0
 
         for source in self.controlled_territories(territories):
             spare = max(0, source.armies - 1 - self.border_threat(source, territories))
@@ -112,8 +116,9 @@ class ArtificialPlayer(Player):
 
                 need = self.border_threat(destination, territories) + 1 - destination.armies
 
-                if need > 0:
-                    if best is None or min(spare, need) > best[2]:
-                        best = (source, destination, min(spare, need))
+                amount = min(spare, need)
+                if amount > best_amount:
+                    best = (source, destination, amount)
+                    best_amount = amount
 
         return best

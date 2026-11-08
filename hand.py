@@ -1,18 +1,23 @@
+"""A player's hand of Risk cards."""
+
 from card import Card
 
 class Hand:
-    
+    """Holds a player's cards and checks whether a set can be traded in."""
+
     def __init__(self) -> None:
         self.cards: list[Card] = []
-    
+
     def add_card(self, card: Card) -> None:
+        """Add a card to the hand."""
         self.cards.append(card)
 
     def can_use(self) -> bool:
+        """Return True if the hand contains a set that can be traded in."""
         # must have at least 3 cards
-        if len(self.cards) < 3: 
+        if len(self.cards) < 3:
             return False
-        
+
         # either has a wildcard, three of one type, or at least one of each
         has_wildcard = False
         types: list[int] = [0,0,0]
@@ -22,4 +27,3 @@ class Hand:
             else:
                 types[card.army] += 1
         return has_wildcard or any(t >= 3 for t in types) or all(t >= 1 for t in types)
-        

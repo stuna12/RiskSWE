@@ -1,5 +1,7 @@
+"""Actions a player can take during the game."""
 
-class GameAction:
+
+class GameAction:  # pylint: disable=too-few-public-methods
     """
         Select Dice
         Select Territory

@@ -99,7 +99,7 @@ class CountryEnum(Enum):
         return country_id - CONTINENT_RANGES[-1].start
 
 
-class Country:
+class Country:  # pylint: disable=too-few-public-methods
     """A single territory: adjacency list, owner, and army count."""
 
     def __init__(self, country_type):

@@ -1,3 +1,5 @@
+"""Entry point for the Risk game: opens the window and main menu."""
+
 import arcade
 import arcade.gui
 from game_view import RiskGame

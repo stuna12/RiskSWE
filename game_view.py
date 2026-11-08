@@ -5,7 +5,7 @@ import arcade
 from arcade.types import Color
 from player import Player
 from country import CountryEnum
-from CountryButton import CircleButton
+from country_button import ButtonColors, Circle, CircleButton, Outline
 from gamestate import GameState, Stage
 
 
@@ -53,9 +53,7 @@ class RiskGame(arcade.View):
                 x = math.floor(float(rx) * self.window.width)
                 y = math.floor(float(ry) * self.window.height)
                 self.buttons.append(CircleButton(
-                                        center_x = x,
-                                        center_y = y,
-                                        radius = math.floor(self.window.width/100),
+                                        Circle(x, y, math.floor(self.window.width/100)),
                                         text = f"{CountryEnum.country_id_to_continent_id(i) + 1}",
                                     ))
 
@@ -63,34 +61,25 @@ class RiskGame(arcade.View):
 
         self.action_buttons = {
             "end_turn": CircleButton(
-                center_x = self.window.width - 80,
-                center_y = 80,
-                radius = 50,
+                Circle(self.window.width - 80, 80, 50),
                 text = "End Turn",
                 action = self.state.end_turn,
             ),
             "skip_fortify": CircleButton(
-                center_x = self.window.width - 200,
-                center_y = 80,
-                radius = 50,
+                Circle(self.window.width - 200, 80, 50),
                 text = "Skip Fortify",
                 action = self.state.skip_fortify,
             ),
             "roll": CircleButton(
-                center_x = 80,
-                center_y = 80,
-                radius = 50,
+                Circle(80, 80, 50),
                 text = "Roll",
                 action = self.roll,
             ),
             "quit": CircleButton(
-                center_x = self.window.width - 50,
-                center_y = self.window.height - 50,
-                radius = 50,
+                Circle(self.window.width - 50, self.window.height - 50, 50),
                 text = "Quit Game",
                 action = arcade.close_window,
-                normal_color = arcade.color.DARK_RED,
-                hover_color = arcade.color.RED,
+                colors = ButtonColors(normal=arcade.color.DARK_RED, hover=arcade.color.RED),
             ),
         }
 
@@ -115,8 +104,8 @@ class RiskGame(arcade.View):
 
     def refresh_buttons(self):
         """Recolor territories by owner. Only the current player's territories react to hover."""
-        assert self.state.current_player is not None
-        self.owner = self.state.current_player
+        assert self.state.turn.player is not None
+        self.owner = self.state.turn.player
         interactible = self.state.reachable_tiles(self.owner)
         # assert len(interactible) > 1
         # print(interactible)
@@ -124,13 +113,13 @@ class RiskGame(arcade.View):
         for (territory, btn) in zip(self.state.territories, self.buttons):
             btn.text = str(territory.armies)
             if territory.owner is None:
-                btn.normal_color = DEFAULT_COLOR
+                btn.colors.normal = DEFAULT_COLOR
             else:
-                btn.normal_color = territory.owner.color
+                btn.colors.normal = territory.owner.color
             if territory in interactible:
-                btn.hover_color = lighten(btn.normal_color)
+                btn.colors.hover = lighten(btn.colors.normal)
             else:
-                btn.hover_color = btn.normal_color
+                btn.colors.hover = btn.colors.normal
 
     def update_highlights(self):
         """White ring on the selected territory, red ring on the target,
@@ -139,16 +128,15 @@ class RiskGame(arcade.View):
             btn.outline = None
         interactible = self.state.reachable_tiles(self.owner)
         for ter in interactible:
-            self.buttons[ter.type.value].outline = arcade.color.YELLOW
-            self.buttons[ter.type.value].outline_width = 2
+            self.buttons[ter.type.value].outline = Outline(arcade.color.YELLOW, 2)
 
-        if self.state.selected is not None:
-            self.buttons[self.state.selected.type.value].outline = arcade.color.WHITE
-            self.buttons[self.state.selected.type.value].outline_width = 4
+        if self.state.turn.selected is not None:
+            self.buttons[self.state.turn.selected.type.value].outline = \
+                Outline(arcade.color.WHITE, 4)
 
-        if self.state.attacked is not None:
-            self.buttons[self.state.attacked.type.value].outline = arcade.color.RED
-            self.buttons[self.state.attacked.type.value].outline_width = 4
+        if self.state.battle.attacked is not None:
+            self.buttons[self.state.battle.attacked.type.value].outline = \
+                Outline(arcade.color.RED, 4)
 
     def roll(self):
         """Roll max dice for both sides for attack."""
@@ -156,9 +144,9 @@ class RiskGame(arcade.View):
         # select dice verifies predicates
         if not self.state.select_dice(self.owner, self.state.active_dice(self.owner)):
             return
-        assert self.state.attacked is not None
-        assert self.state.attacked.owner is not None # obviously implied by above
-        defender = self.state.attacked.owner
+        assert self.state.battle.attacked is not None
+        assert self.state.battle.attacked.owner is not None # obviously implied by above
+        defender = self.state.battle.attacked.owner
         self.state.select_dice(defender, self.state.active_dice(defender))
 
         self.state.do_damage()
@@ -235,10 +223,10 @@ class RiskGame(arcade.View):
 
     def draw_turn_banner(self):
         """Top-left banner showing whose turn it is."""
-        player = self.state.current_player
+        player = self.state.turn.player
         if player is None:
             return
-        text = (f"{player.name}'s Turn; {self.state.current_stage.name}; "
+        text = (f"{player.name}'s Turn; {self.state.turn.stage.name}; "
                 f"Cards: {len(player.hand.cards)}")
         label = arcade.Text(text, 0, 0, arcade.color.WHITE, font_size=18, bold=True)
         label.x = 16
@@ -252,10 +240,10 @@ class RiskGame(arcade.View):
 
     def draw_phase_banner(self):
         """Banner under the turn banner showing the phase and remaining reinforcements."""
-        if self.state.current_stage == Stage.TERRITORY_REINFORCEMENT:
+        if self.state.turn.stage == Stage.TERRITORY_REINFORCEMENT:
             text = f"REINFORCE: {self.state.armies_remaining[self.owner]} troops left"
             bg = Color(200, 120, 0, 255)
-        elif self.state.current_stage == Stage.GAME_OVER:
+        elif self.state.turn.stage == Stage.GAME_OVER:
             text = "GAME OVER"
             bg = Color(60, 60, 60, 255)
         else:
@@ -278,11 +266,11 @@ class RiskGame(arcade.View):
         dice_number: int = 2
         active = self.state.active_dice(self.owner)
 
-        if self.owner == self.state.current_player:
+        if self.owner == self.state.turn.player:
             dice_color = arcade.color.WHITE
             dice_number = 3
 
-        dice_rolls = self.state.last_attacker_rolls
+        dice_rolls = self.state.battle.last_attacker_rolls
 
         size = 50
 
@@ -335,31 +323,30 @@ class RiskGame(arcade.View):
 
         if len(self.owner.hand.cards) == 0:
             return
-        
+
         #draw the hand in the middle 5th of the screen
         mouse_pos = (self.window.mouse["x"], self.window.mouse["y"])
-        hand_rect = arcade.LBWH( 2 * self.window.width / 5, 0,
-                                self.window.width / 5, self.window.height/10)
-        
         low = self.window.width * 2 / 5
         delta = self.window.width / 5 / (len(self.owner.hand.cards) + 1)
-        for i in range(len(self.owner.hand.cards)):
-            bb = arcade.XYWH(low + delta * (i + 1), self.window.height/20, self.window.width / 20, self.window.height/10)
+        for i, card in enumerate(self.owner.hand.cards):
+            bb = arcade.XYWH(low + delta * (i + 1), self.window.height/20,
+                             self.window.width / 20, self.window.height/10)
             arcade.draw_rect_filled(
                         bb,
                                 Color(255, 255, 255)
                     )
             arcade.draw_rect_outline(bb, Color(0, 0, 0))
-            
+
             if bb.point_in_rect(mouse_pos):
-                if self.owner.hand.cards[i].wildcard:
+                if card.wildcard:
                     label = arcade.Text(
                         "Wildcard",
                         0, 0, arcade.color.WHITE, font_size=12
                     )
                 else:
                     label = arcade.Text(
-                        self.state.territories[self.owner.hand.cards[i].territory].type.name.replace("_", " ").title() + ", " + self.owner.hand.cards[i].army_name(),
+                        self.state.territories[card.territory].type.name
+                        .replace("_", " ").title() + ", " + card.army_name(),
                         0, 0, arcade.color.WHITE, font_size=12
                     )
 
