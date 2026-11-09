@@ -37,7 +37,7 @@ class ArtificialPlayer(Player):
         return self.border_threat(territory, territories) - planned
 
 
-    def attack_advantage(self, *pair) -> int:
+    def attack_advantage(self, pair: tuple[Country, Country]) -> int:
         """
         Returns the difference of troops in the
         attacking territory vs the defending territory,
@@ -89,7 +89,7 @@ class ArtificialPlayer(Player):
 
         best = max(candidates, key=self.attack_advantage)
 
-        if self.attack_advantage(*best) < 1:
+        if self.attack_advantage(best) < 1:
             return None
 
         return best
