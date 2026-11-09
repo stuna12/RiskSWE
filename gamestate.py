@@ -4,11 +4,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from random import randint, shuffle
 
+from artificial_player import ArtificialPlayer
 from country import Country, CountryEnum
 from player import Player
 from card import Card
-
-
+from scheduling import schedule
 
 
 class Stage(Enum):
@@ -121,6 +121,7 @@ class GameState:
         #ensure self.armies_remaining is set
         for player in self.players:
             self.armies_remaining[player] = 0
+        self._ai_take_turn()
         return True
 
     def _deal_territories(self):
@@ -381,6 +382,64 @@ class GameState:
         else:
             self.turn.stage = Stage.PLACE_ARMIES
 
+    def _ai_take_turn(self):
+        player = self.turn.player
+
+        if not isinstance(player, ArtificialPlayer) or self.turn.stage == Stage.GAME_OVER:
+            return
+
+        if self.turn.stage == Stage.TURN_IN_CARDS:
+            self.turn.stage = Stage.PLACE_ARMIES
+
+        if self.turn.stage == Stage.PLACE_ARMIES:
+            schedule(self._ai_reinforce, 0.5, player)
+        elif self.turn.stage == Stage.ATTACK:
+            schedule(self._ai_attack, 0.5, player)
+
+    def _ai_reinforce(self, player: ArtificialPlayer):
+        placements = player.reinforce(self.armies_remaining[player], self.territories)
+
+        if placements:
+            placements[0].armies += 1
+            self.armies_remaining[player] -= 1
+            schedule(self._ai_reinforce, 0.5, player)
+        else:
+            self.turn.stage = Stage.ATTACK
+            schedule(self._ai_attack, 0.5, player)
+
+    def _ai_attack(self, player: ArtificialPlayer):
+        if self.turn.stage != Stage.ATTACK:
+            return
+
+        move = player.attack(self.territories)
+
+        if move is None:
+            self.turn.stage = Stage.FORTIFY
+            schedule(self._ai_fortify, 0.5, player)
+            return
+
+        self.select_territory(player, move[0].type.value)
+        self.select_territory(player, move[1].type.value)
+
+        while self.battle.attacked is not None and self.attack_roll(player):
+            pass
+
+        if self.battle.attacked is not None:
+            self._reset_attack()
+            self.turn.stage = Stage.FORTIFY
+            schedule(self._ai_fortify, 0.5, player)
+            return
+
+        schedule(self._ai_attack, 0.5, player)
+
+    def _ai_fortify(self, player: ArtificialPlayer):
+        move = player.fortify(self.territories)
+
+        if move is not None:
+            move[0].armies -= move[2]
+            move[1].armies += move[2]
+
+        self.end_turn()
 
     def end_turn(self):
         if self.turn.stage == Stage.GAME_OVER:
@@ -400,6 +459,7 @@ class GameState:
         next_index = (self.players.index(self.turn.player) + 1) % len(self.players)
         self.turn.player = self.players[next_index]
         self._start_turn(self.turn.player)
+        self._ai_take_turn()
         # Enable once PLACE_ARMIES is playable and start_play fills armies_remaining
         # if self.turn.stage not in (Stage.TERRITORY_SELECTION, Stage.TERRITORY_REINFORCEMENT):
         #     self._start_turn(self.turn.player)

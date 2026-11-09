@@ -3,6 +3,7 @@ import math
 import random
 import arcade
 from arcade.types import Color
+from artificial_player import ArtificialPlayer
 from player import Player
 from country import CountryEnum
 from country_button import ButtonColors, Circle, CircleButton, Outline
@@ -95,7 +96,7 @@ class RiskGame(arcade.View):
         # Both players are human for now, swap one for ArtificialPlayer later
         # start_play shuffles the turn order and deals the territories randomly
         self.state.add_player(Player(PLAYER_SETUPS[0][1], PLAYER_SETUPS[0][0]))
-        self.state.add_player(Player(PLAYER_SETUPS[1][1], PLAYER_SETUPS[1][0]))
+        self.state.add_player(ArtificialPlayer(PLAYER_SETUPS[1][1], PLAYER_SETUPS[1][0]))
         self.owner = self.state.players[0]
         self.state.start_play()
 
@@ -105,7 +106,10 @@ class RiskGame(arcade.View):
     def refresh_buttons(self):
         """Recolor territories by owner. Only the current player's territories react to hover."""
         assert self.state.turn.player is not None
-        self.owner = self.state.turn.player
+        
+        if not isinstance(self.state.turn.player, ArtificialPlayer):
+            self.owner = self.state.turn.player
+        
         interactible = self.state.reachable_tiles(self.owner)
         # zip pairs each territory with its button (both lists are in the same order)
         for (territory, btn) in zip(self.state.territories, self.buttons):
