@@ -6,8 +6,8 @@ armies and attacking neighboring territories to control the map.
 
 ## Requirements
 
-- Python 3.10 or newer
-- Arcade 3.x
+- Python 3.10 or newer (tested on 3.11.5)
+- Arcade 3.0 or newer (tested on 3.3.3)
 
 Arcade is the only third party package required.
 
@@ -48,18 +48,24 @@ territories are distributed randomly.
 
 ### Taking a Turn
 
-1. **Place armies:** After the second turn, players receive armies (always 
-   at least 3). Receive one army for every three territories you own, plus bonuses for continents. Click a territory you own to place an army.
+1. **Place armies:** Players receive troops at the start of each turn for every 
+   turn after the first turn. Players always receive at least 3 troops. Receive 
+   one troop for every three territories you own, plus bonuses for continents. 
+   Click a territory you own to add troops to it. Once you collect enough cards, 
+   you can also trade them in for bonus troops.
 
 2. **Attack:** Select one of your territories with at least 2 armies, then
    select an adjacent enemy territory and click **Roll**. The attacker rolls
-   up to 3 dice depending on the number of attacking troops. The defender rolls up to 2 dice. The highest dice are compared and ties go to the defender. You can attack multiple times.
+   up to 3 dice depending on the number of attacking troops. The defender rolls up 
+   to 2 dice. The highest dice are compared and ties go to the defender. You can 
+   attack multiple times.
 
 3. **End Turn:** Click **End Turn** when you finish attacking. Gain a card 
    if you captured at least one territory during your turn.
 
 4. **Fortify:** To fortify, select a territory you control with at least 2 
-   armies and an adjacent territory you own. You can also choose to click **Skip Fortify**.
+   armies and an adjacent territory you own. You can also choose to click 
+   **Skip Fortify**.
 
 The game ends when one player controls all territories. Press **Esc** or
 click **Quit Game** to close the game.
