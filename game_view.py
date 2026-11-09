@@ -98,7 +98,7 @@ class RiskGame(arcade.View):
         self.state.add_player(Player(PLAYER_SETUPS[1][1], PLAYER_SETUPS[1][0]))
         self.owner = self.state.players[0]
         self.state.start_play()
-    
+
         self.refresh_buttons()
 
 
@@ -165,13 +165,14 @@ class RiskGame(arcade.View):
                 if btn.on_mouse_press():
                     self.state.select_territory(self.owner, i)
                     return #exit before processing all buttons
-                
+
             height = self.window.height / 10
             low = self.window.width * 2 / 5
-            which_hovered = int((self.mouse_pos[0] - low) // (self.window.width / 5 / len(self.owner.hand.cards)))
+            which_hovered = int((self.mouse_pos[0] - low) //
+                                (self.window.width / 5 / len(self.owner.hand.cards)))
             if self.mouse_pos[1] > self.window.height/15 + height / 2:
                 which_hovered = -1
-                
+
             self.state.select_card(self.owner, which_hovered)
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
@@ -324,20 +325,22 @@ class RiskGame(arcade.View):
         if len(self.owner.hand.cards) == 0:
             return
         #draw the hand in the middle 5th of the screen
-        
+
         width = self.window.width / 20
         height = self.window.height / 10
-        
+
         low = self.window.width * 2 / 5
         delta = self.window.width / 5 / (len(self.owner.hand.cards) + 1)
 
-        which_hovered = int((self.mouse_pos[0] - low) // (self.window.width / 5 / len(self.owner.hand.cards)))
+        which_hovered = int((self.mouse_pos[0] - low) //
+                            (self.window.width / 5 / len(self.owner.hand.cards)))
         selectable = self.state.selectable_cards(self.owner)
-        
+
         if self.mouse_pos[1] > self.window.height/15 + height / 2:
             which_hovered = -1
         for i, card in enumerate(self.owner.hand.cards):
-            if self.owner == self.state.turn.player and (i in self.state.turn.selected_cards or which_hovered == i):
+            if self.owner == self.state.turn.player and (
+                    i in self.state.turn.selected_cards or which_hovered == i):
                 bb = arcade.XYWH(low + delta * (i + 1), self.window.height/15,
                             width, height)
                 arcade.draw_rect_filled(bb, Color(255, 255, 255))
@@ -351,7 +354,7 @@ class RiskGame(arcade.View):
                     arcade.draw_rect_filled(bb, Color(150, 150, 150))
             arcade.draw_rect_outline(bb, Color(0, 0, 0))
 
-        
+
         # draw tooltips over top of the cards
         for i, card in enumerate(self.owner.hand.cards):
             if which_hovered == i:

@@ -124,7 +124,7 @@ class GameState:
         self.turn.player.hand.add_card(self.cards.pop())
         self.turn.player.hand.add_card(self.cards.pop())
         self.turn.player.hand.add_card(self.cards.pop())
-        
+
         #ensure self.armies_remaining is set
         for player in self.players:
             self.armies_remaining[player] = 0
@@ -262,9 +262,10 @@ class GameState:
 
     def selectable_cards(self, player: Player) -> list[int]:
         # wildcards are always selectable.
-        if player != self.turn.player or ((not player.hand.can_use()) or len(self.turn.selected_cards) == 3):
+        if player != self.turn.player or \
+            ((not player.hand.can_use()) or len(self.turn.selected_cards) == 3):
             return []
-        
+
         # two are selected
         if len(self.turn.selected_cards) == 2:
             ci1, ci2 = self.turn.selected_cards[0:2]
@@ -273,11 +274,14 @@ class GameState:
                 return [i for i in range(len(player.hand.cards)) if i not in (ci1, ci2)]
             # same armies
             if player.hand.cards[ci1].army == player.hand.cards[ci2].army:
-                return [i for i in range(len(player.hand.cards)) if i not in (ci1, ci2) and 
-                        (player.hand.cards[i].army == player.hand.cards[ci1].army or player.hand.cards[i].wildcard)]
+                return [i for i in range(len(player.hand.cards)) if
+                        i not in (ci1, ci2) and (player.hand.cards[i].army == \
+                            player.hand.cards[ci1].army or player.hand.cards[i].wildcard)]
             # different armies
-            return [i for i in range(len(player.hand.cards)) if i not in (ci1, ci2) and (player.hand.cards[i].wildcard or
-                    (player.hand.cards[i].army != player.hand.cards[ci1].army and player.hand.cards[i].army != player.hand.cards[ci2].army))]
+            return [i for i in range(len(player.hand.cards)) if
+                    i not in (ci1, ci2) and (player.hand.cards[i].wildcard or
+                    (player.hand.cards[i].army not in (
+                        player.hand.cards[ci1].army, player.hand.cards[ci2].army)))]
 
         return [i for i in range(len(player.hand.cards)) if i not in (self.turn.selected_cards)]
 
@@ -285,9 +289,9 @@ class GameState:
     # def auto_use_cards(self, player: Player):
     #     if player != self.turn.player or not player.hand.can_use():
     #         return
-        
+
     #     #if has a wildcard:
-        
+
 
     def select_card(self, player: Player, card: int):
         if player != self.turn.player:
@@ -303,15 +307,17 @@ class GameState:
             return
 
         self.turn.selected_cards.append(card)
-        
+
         # if 3 have been selected, submit
         if len(self.turn.selected_cards) == 3:
-            cards = [x for x in player.hand.cards if player.hand.cards.index(x) in self.turn.selected_cards]
+            cards = [x for x in player.hand.cards if
+                        player.hand.cards.index(x) in self.turn.selected_cards]
             self.turn.selected_cards = []
-            for card in cards:
-                player.hand.cards.remove(card)
+            for crd in cards:
+                player.hand.cards.remove(crd)
             self.turn.cards_submitted += 1
-            self.armies_remaining[player] += 2 + 2 * self.turn.cards_submitted + max(0, self.turn.cards_submitted - 5)
+            self.armies_remaining[player] += \
+                2 + 2 * self.turn.cards_submitted + max(0, self.turn.cards_submitted - 5)
 
 
 
