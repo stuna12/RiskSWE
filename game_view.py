@@ -71,6 +71,11 @@ class RiskGame(arcade.View):
                 text = "Skip Fortify",
                 action = self.state.skip_fortify,
             ),
+            "done_trading": CircleButton(
+                Circle(self.window.width - 320, 80, 55),
+                text = "Done Trading",
+                action = self.state.finish_trading,
+            ),
             "roll": CircleButton(
                 Circle(80, 80, 50),
                 text = "Roll",
@@ -170,6 +175,10 @@ class RiskGame(arcade.View):
                     self.state.select_territory(self.owner, i)
                     return #exit before processing all buttons
 
+            # no cards in hand means nothing to select, avoid dividing by zero
+            if not self.owner.hand.cards:
+                return
+
             height = self.window.height / 10
             low = self.window.width * 2 / 5
             which_hovered = int((self.mouse_pos[0] - low) //
@@ -200,6 +209,9 @@ class RiskGame(arcade.View):
         if self.action_buttons:
             self.action_buttons["end_turn"].active = self.state.can_skip(self.owner)
             self.action_buttons["skip_fortify"].active = self.state.can_skip_fortify(self.owner)
+            self.action_buttons["done_trading"].active = (
+                self.state.can_finish_trading(self.owner)
+            )
             for action_button in self.action_buttons.values():
                 action_button.draw()
         self.draw_dice()
@@ -245,8 +257,13 @@ class RiskGame(arcade.View):
 
     def draw_phase_banner(self):
         """Banner under the turn banner showing the phase and remaining reinforcements."""
-        if self.state.turn.stage == Stage.TERRITORY_REINFORCEMENT:
-            text = f"REINFORCE: {self.state.armies_remaining[self.owner]} troops left"
+        stage = self.state.turn.stage
+        player = self.state.turn.player
+        if stage == Stage.TURN_IN_CARDS and player is not None:
+            text = f"TRADE CARDS: {self.state.armies_remaining[player]} troops banked"
+            bg = Color(200, 120, 0, 255)
+        elif stage in (Stage.TERRITORY_REINFORCEMENT, Stage.PLACE_ARMIES) and player is not None:
+            text = f"REINFORCE: {self.state.armies_remaining[player]} troops left"
             bg = Color(200, 120, 0, 255)
         elif self.state.turn.stage == Stage.GAME_OVER:
             text = "GAME OVER"
@@ -386,4 +403,3 @@ class RiskGame(arcade.View):
                 )
 
                 label.draw()
-                

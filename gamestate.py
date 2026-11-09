@@ -344,12 +344,19 @@ class GameState:
                 Stage.TERRITORY_REINFORCEMENT, Stage.TERRITORY_SELECTION, Stage.PLACE_ARMIES):
             return False
 
-        if self.turn.stage == Stage.ATTACK:
-            return True
-        if self.turn.stage == Stage.TURN_IN_CARDS and len(player.hand.cards) < 5:
-            return True
+        return self.turn.stage == Stage.ATTACK
 
-        return False
+    def can_finish_trading(self, player):
+        """Trading is optional below 5 cards."""
+        return (player == self.turn.player and self.turn.stage == Stage.TURN_IN_CARDS
+                and len(player.hand.cards) < 5)
+
+    def finish_trading(self):
+        """Leave the card trade in stage"""
+        player = self.turn.player
+        if player is not None and self.can_finish_trading(player):
+            self.turn.selected_cards = []
+            self.turn.stage = Stage.PLACE_ARMIES
 
 
     def can_skip_fortify(self, player):
