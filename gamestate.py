@@ -118,13 +118,6 @@ class GameState:
         self._deal_territories()
         self.turn.stage = Stage.ATTACK
 
-        self.turn.player.hand.add_card(self.cards.pop())
-        self.turn.player.hand.add_card(self.cards.pop())
-        self.turn.player.hand.add_card(self.cards.pop())
-        self.turn.player.hand.add_card(self.cards.pop())
-        self.turn.player.hand.add_card(self.cards.pop())
-        self.turn.player.hand.add_card(self.cards.pop())
-
         #ensure self.armies_remaining is set
         for player in self.players:
             self.armies_remaining[player] = 0
