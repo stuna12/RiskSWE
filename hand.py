@@ -27,3 +27,11 @@ class Hand:
             else:
                 types[card.army] += 1
         return has_wildcard or any(t >= 3 for t in types) or all(t >= 1 for t in types)
+
+    def has_wildcard(self) -> bool:
+        has_wildcard = False
+        for card in self.cards:
+            if card.wildcard:
+                has_wildcard = True
+        return has_wildcard
+    

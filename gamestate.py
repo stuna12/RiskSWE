@@ -44,6 +44,7 @@ class TurnState:
     conquered: bool = False         # conquered at least one territory this turn
     gained_armies: bool = False
     selected_cards: list[int] = field(default_factory=list)
+    cards_submitted: int = 0
 
 
 @dataclass
@@ -117,6 +118,13 @@ class GameState:
         self._deal_territories()
         self.turn.stage = Stage.ATTACK
 
+        self.turn.player.hand.add_card(self.cards.pop())
+        self.turn.player.hand.add_card(self.cards.pop())
+        self.turn.player.hand.add_card(self.cards.pop())
+        self.turn.player.hand.add_card(self.cards.pop())
+        self.turn.player.hand.add_card(self.cards.pop())
+        self.turn.player.hand.add_card(self.cards.pop())
+        
         #ensure self.armies_remaining is set
         for player in self.players:
             self.armies_remaining[player] = 0
@@ -241,22 +249,6 @@ class GameState:
                 self.turn.selected.armies = 1
                 self.end_turn()
             return True
-        # if self.turn.stage == Stage.TERRITORY_SELECTION:
-        #     self.territories[territory_id].armies += 1
-        #     self.armies_remaining[player] -= 1
-        #     self.territories[territory_id].owner = self.turn.player
-        #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
-        #         self.turn.stage = Stage.TERRITORY_REINFORCEMENT
-        #     self.end_turn()
-        #     return True
-        #
-        # if self.turn.stage == Stage.TERRITORY_REINFORCEMENT:
-        #     self.territories[territory_id].armies += 1
-        #     self.armies_remaining[player] -= 1
-        #     if all(len(self.reachable_tiles(player)) == 0 for player in self.players):
-        #         self.turn.stage = Stage.PLACE_ARMIES
-        #     self.end_turn()
-        #     return True
 
         if self.turn.stage == Stage.PLACE_ARMIES:
             self.territories[territory_id].armies += 1
@@ -268,11 +260,60 @@ class GameState:
         self.turn.selected = self.territories[territory_id]
         return True
 
-    def selectable_cards(self, player: Player):
-        pass
+    def selectable_cards(self, player: Player) -> list[int]:
+        # wildcards are always selectable.
+        if player != self.turn.player or ((not player.hand.can_use()) or len(self.turn.selected_cards) == 3):
+            return []
+        
+        # two are selected
+        if len(self.turn.selected_cards) == 2:
+            ci1, ci2 = self.turn.selected_cards[0:2]
+            # either are a wildcard
+            if player.hand.cards[ci1].wildcard or player.hand.cards[ci2].wildcard:
+                return [i for i in range(len(player.hand.cards)) if i not in (ci1, ci2)]
+            # same armies
+            if player.hand.cards[ci1].army == player.hand.cards[ci2].army:
+                return [i for i in range(len(player.hand.cards)) if i not in (ci1, ci2) and 
+                        (player.hand.cards[i].army == player.hand.cards[ci1].army or player.hand.cards[i].wildcard)]
+            # different armies
+            return [i for i in range(len(player.hand.cards)) if i not in (ci1, ci2) and (player.hand.cards[i].wildcard or
+                    (player.hand.cards[i].army != player.hand.cards[ci1].army and player.hand.cards[i].army != player.hand.cards[ci2].army))]
 
-    def select_card(self, player: Player):
-        pass
+        return [i for i in range(len(player.hand.cards)) if i not in (self.turn.selected_cards)]
+
+
+    # def auto_use_cards(self, player: Player):
+    #     if player != self.turn.player or not player.hand.can_use():
+    #         return
+        
+    #     #if has a wildcard:
+        
+
+    def select_card(self, player: Player, card: int):
+        if player != self.turn.player:
+            return
+
+        # deselecting a card
+        if card in self.turn.selected_cards:
+            self.turn.selected_cards.remove(card)
+            return
+
+        #check legality
+        if card not in self.selectable_cards(player):
+            return
+
+        self.turn.selected_cards.append(card)
+        
+        # if 3 have been selected, submit
+        if len(self.turn.selected_cards) == 3:
+            cards = [x for x in player.hand.cards if player.hand.cards.index(x) in self.turn.selected_cards]
+            self.turn.selected_cards = []
+            for card in cards:
+                player.hand.cards.remove(card)
+            self.turn.cards_submitted += 1
+            self.armies_remaining[player] += 2 + 2 * self.turn.cards_submitted + max(0, self.turn.cards_submitted - 5)
+
+
 
     def attack_roll(self, player: Player) -> bool:
         """Roll max dice for both sides. Called by the Roll button."""

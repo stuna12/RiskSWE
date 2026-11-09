@@ -98,7 +98,7 @@ class RiskGame(arcade.View):
         self.state.add_player(Player(PLAYER_SETUPS[1][1], PLAYER_SETUPS[1][0]))
         self.owner = self.state.players[0]
         self.state.start_play()
-
+    
         self.refresh_buttons()
 
 
@@ -107,8 +107,6 @@ class RiskGame(arcade.View):
         assert self.state.turn.player is not None
         self.owner = self.state.turn.player
         interactible = self.state.reachable_tiles(self.owner)
-        # assert len(interactible) > 1
-        # print(interactible)
         # zip pairs each territory with its button (both lists are in the same order)
         for (territory, btn) in zip(self.state.territories, self.buttons):
             btn.text = str(territory.armies)
@@ -167,6 +165,14 @@ class RiskGame(arcade.View):
                 if btn.on_mouse_press():
                     self.state.select_territory(self.owner, i)
                     return #exit before processing all buttons
+                
+            height = self.window.height / 10
+            low = self.window.width * 2 / 5
+            which_hovered = int((self.mouse_pos[0] - low) // (self.window.width / 5 / len(self.owner.hand.cards)))
+            if self.mouse_pos[1] > self.window.height/15 + height / 2:
+                which_hovered = -1
+                
+            self.state.select_card(self.owner, which_hovered)
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         self.mouse_pos = (x, y)
@@ -174,12 +180,6 @@ class RiskGame(arcade.View):
             button.check_hover(x, y)
         for action_button in self.action_buttons.values():
             action_button.check_hover(x, y)
-
-    def on_mouse_release(self, x: int, y: int, button: int, modifiers: int):
-        """ Called whenever a button is released """
-
-    def on_update(self, delta_time: float):
-        pass
 
     def on_draw(self):
         """ Render the screen. """
@@ -323,21 +323,38 @@ class RiskGame(arcade.View):
 
         if len(self.owner.hand.cards) == 0:
             return
-
         #draw the hand in the middle 5th of the screen
-        mouse_pos = (self.window.mouse["x"], self.window.mouse["y"])
+        
+        width = self.window.width / 20
+        height = self.window.height / 10
+        
         low = self.window.width * 2 / 5
         delta = self.window.width / 5 / (len(self.owner.hand.cards) + 1)
+
+        which_hovered = int((self.mouse_pos[0] - low) // (self.window.width / 5 / len(self.owner.hand.cards)))
+        selectable = self.state.selectable_cards(self.owner)
+        
+        if self.mouse_pos[1] > self.window.height/15 + height / 2:
+            which_hovered = -1
         for i, card in enumerate(self.owner.hand.cards):
-            bb = arcade.XYWH(low + delta * (i + 1), self.window.height/20,
-                             self.window.width / 20, self.window.height/10)
-            arcade.draw_rect_filled(
-                        bb,
-                                Color(255, 255, 255)
-                    )
+            if self.owner == self.state.turn.player and (i in self.state.turn.selected_cards or which_hovered == i):
+                bb = arcade.XYWH(low + delta * (i + 1), self.window.height/15,
+                            width, height)
+                arcade.draw_rect_filled(bb, Color(255, 255, 255))
+            else:
+                # print(self.state.selectable_cards(self.owner))
+                bb = arcade.XYWH(low + delta * (i + 1), self.window.height/20,
+                            width, height)
+                if i in selectable:
+                    arcade.draw_rect_filled(bb, Color(255, 255, 255))
+                else:
+                    arcade.draw_rect_filled(bb, Color(150, 150, 150))
             arcade.draw_rect_outline(bb, Color(0, 0, 0))
 
-            if bb.point_in_rect(mouse_pos):
+        
+        # draw tooltips over top of the cards
+        for i, card in enumerate(self.owner.hand.cards):
+            if which_hovered == i:
                 if card.wildcard:
                     label = arcade.Text(
                         "Wildcard",
