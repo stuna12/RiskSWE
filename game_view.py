@@ -106,10 +106,10 @@ class RiskGame(arcade.View):
     def refresh_buttons(self):
         """Recolor territories by owner. Only the current player's territories react to hover."""
         assert self.state.turn.player is not None
-        
+
         if not isinstance(self.state.turn.player, ArtificialPlayer):
             self.owner = self.state.turn.player
-        
+
         interactible = self.state.reachable_tiles(self.owner)
         # zip pairs each territory with its button (both lists are in the same order)
         for (territory, btn) in zip(self.state.territories, self.buttons):
@@ -386,3 +386,4 @@ class RiskGame(arcade.View):
                 )
 
                 label.draw()
+                
