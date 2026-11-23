@@ -9,7 +9,6 @@ from country import CountryEnum
 from country_button import ButtonColors, Circle, CircleButton, Outline
 from gamestate import GameState, Stage
 
-
 BACKGROUND_COLOR = arcade.color.ALMOND
 DEFAULT_COLOR = arcade.color.COOL_GREY
 
@@ -95,7 +94,6 @@ class RiskGame(arcade.View):
             self.two_player_setup()
         else:
             raise NotImplementedError("Only the 2-player setup is implemented so far")
-
 
     def two_player_setup(self):
         # Both players are human for now, swap one for ArtificialPlayer later
@@ -194,6 +192,7 @@ class RiskGame(arcade.View):
             button.check_hover(x, y)
         for action_button in self.action_buttons.values():
             action_button.check_hover(x, y)
+        self.owner.hand.check_hover(x,y)
 
     def on_draw(self):
         """ Render the screen. """
@@ -345,61 +344,42 @@ class RiskGame(arcade.View):
 
         if len(self.owner.hand.cards) == 0:
             return
-        #draw the hand in the middle 5th of the screen
 
-        width = self.window.width / 20
-        height = self.window.height / 10
+        if not self.owner.hand.arranged:
+            self.owner.hand.arrange_components(self.window.width, self.window.height)
 
-        low = self.window.width * 2 / 5
-        delta = self.window.width / 5 / (len(self.owner.hand.cards) + 1)
 
-        which_hovered = int((self.mouse_pos[0] - low) //
-                            (self.window.width / 5 / len(self.owner.hand.cards)))
-        selectable = self.state.selectable_cards(self.owner)
-
-        if self.mouse_pos[1] > self.window.height/15 + height / 2:
-            which_hovered = -1
-        for i, card in enumerate(self.owner.hand.cards):
-            if self.owner == self.state.turn.player and (
-                    i in self.state.turn.selected_cards or which_hovered == i):
-                bb = arcade.XYWH(low + delta * (i + 1), self.window.height/15,
-                            width, height)
-                arcade.draw_rect_filled(bb, Color(255, 255, 255))
-            else:
-                # print(self.state.selectable_cards(self.owner))
-                bb = arcade.XYWH(low + delta * (i + 1), self.window.height/20,
-                            width, height)
-                if i in selectable:
-                    arcade.draw_rect_filled(bb, Color(255, 255, 255))
-                else:
-                    arcade.draw_rect_filled(bb, Color(150, 150, 150))
-            arcade.draw_rect_outline(bb, Color(0, 0, 0))
-
+        self.owner.hand.draw(self.state.selectable_cards(self.owner),
+                             self.state.turn.selected_cards)
 
         # draw tooltips over top of the cards
-        for i, card in enumerate(self.owner.hand.cards):
-            if which_hovered == i:
-                if card.wildcard:
-                    label = arcade.Text(
-                        "Wildcard",
-                        0, 0, arcade.color.WHITE, font_size=12
-                    )
-                else:
-                    label = arcade.Text(
-                        self.state.territories[card.territory].type.name
-                        .replace("_", " ").title() + ", " + card.army_name(),
-                        0, 0, arcade.color.WHITE, font_size=12
-                    )
+        hovered = self.owner.hand.hovered()
+        if hovered == -1:
+            return
 
-                label.x = min(self.mouse_pos[0] - label.content_width / 2,
+        card = self.owner.hand.cards[hovered]
+
+        if card.wildcard:
+            label = arcade.Text(
+                "Wildcard",
+                0, 0, arcade.color.WHITE, font_size=12
+            )
+        else:
+            label = arcade.Text(
+                self.state.territories[card.territory].type.name
+                .replace("_", " ").title() + ", " + card.army_name(),
+                0, 0, arcade.color.WHITE, font_size=12
+            )
+
+        label.x = min(self.mouse_pos[0] - label.content_width / 2,
                               self.window.width - label.content_width - 12)
-                label.y = min(self.mouse_pos[1] + 20,
-                              self.window.height - label.content_height - 12)
+        label.y = min(self.mouse_pos[1] + 20,
+                        self.window.height - label.content_height - 12)
 
-                arcade.draw_rect_filled(
-                    arcade.LBWH(label.x - 6, label.y - 10,
-                                label.content_width + 12, label.content_height + 12),
-                                Color(0, 0, 0, 200)
-                )
+        arcade.draw_rect_filled(
+            arcade.LBWH(label.x - 6, label.y - 10,
+                        label.content_width + 12, label.content_height + 12),
+                        Color(0, 0, 0, 200)
+        )
 
-                label.draw()
+        label.draw()
