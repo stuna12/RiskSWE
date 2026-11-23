@@ -60,20 +60,10 @@ class RiskGame(arcade.View):
         self.map = arcade.load_texture("./Risk_game_map.png")
 
         self.action_buttons = {
-            "end_turn": CircleButton(
+            "flex_button": CircleButton(
                 Circle(self.window.width - 80, 80, 50),
-                text = "End Turn",
-                action = self.state.end_turn,
-            ),
-            "skip_fortify": CircleButton(
-                Circle(self.window.width - 200, 80, 50),
-                text = "Skip Fortify",
-                action = self.state.skip_fortify,
-            ),
-            "done_trading": CircleButton(
-                Circle(self.window.width - 320, 80, 55),
-                text = "Done Trading",
-                action = self.state.finish_trading,
+                text = "Skip",
+                action = self.flex_action,
             ),
             "roll": CircleButton(
                 Circle(80, 80, 50),
@@ -105,6 +95,13 @@ class RiskGame(arcade.View):
 
         self.refresh_buttons()
 
+    def flex_action(self):
+        if self.state.can_finish_trading(self.owner):
+            self.state.finish_trading()
+        elif self.state.can_skip_fortify(self.owner):
+            self.state.skip_fortify()
+        elif self.state.can_skip(self.owner):
+            self.state.end_turn()
 
     def refresh_buttons(self):
         """Recolor territories by owner. Only the current player's territories react to hover."""
@@ -206,11 +203,21 @@ class RiskGame(arcade.View):
             button.draw()
 
         if self.action_buttons:
-            self.action_buttons["end_turn"].active = self.state.can_skip(self.owner)
-            self.action_buttons["skip_fortify"].active = self.state.can_skip_fortify(self.owner)
-            self.action_buttons["done_trading"].active = (
-                self.state.can_finish_trading(self.owner)
-            )
+            flex_button = self.action_buttons["flex_button"]
+
+            if self.state.can_finish_trading(self.owner):
+                flex_button.text = "Finish Trading"
+                flex_button.active = True
+            elif self.state.can_skip_fortify(self.owner):
+                flex_button.text = "Skip Fortify"
+                flex_button.active = True
+            elif self.state.can_skip(self.owner):
+                flex_button.text = "End Turn"
+                flex_button.active = True
+            else:
+                flex_button.text = "Skip"
+                flex_button.active = False
+
             for action_button in self.action_buttons.values():
                 action_button.draw()
         self.draw_dice()
