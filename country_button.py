@@ -59,6 +59,9 @@ class CircleButton:
 
         # Draw the circular button base
         arcade.draw_circle_filled(self.circle.x, self.circle.y, self.circle.radius, color)
+        # thin black border so buttons are visible if map is colored similar
+        arcade.draw_circle_outline(self.circle.x, self.circle.y, self.circle.radius,
+                                   arcade.color.BLACK, 1.5)
 
         if self.outline is not None:
             arcade.draw_circle_outline(self.circle.x, self.circle.y, self.circle.radius + 3,

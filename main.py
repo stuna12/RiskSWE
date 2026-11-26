@@ -2,7 +2,7 @@
 
 import arcade
 import arcade.gui
-from game_view import RiskGame
+from game_view import RiskGame, PlayerKind, PLAYER_SETUPS, MIN_PLAYERS
 
 WINDOW_TITLE = "Risk"
 WINDOW_WIDTH = 1280
@@ -20,11 +20,21 @@ class MainMenuView(arcade.View):
         super().__init__()
         # The UIManager is the backbone of the GUI system
         self.manager = arcade.gui.UIManager()
+        # One per color in PLAYER_SETUPS
+        self.kinds = (
+            [PlayerKind.HUMAN, PlayerKind.AI] + 
+            [PlayerKind.OFF] * (len(PLAYER_SETUPS) - 2)
+        )
+
+        # Shows validation messages
+        self.error_label = arcade.gui.UILabel(text="", font_size=14, width=380,
+                                              text_color=arcade.color.LIGHT_SALMON)
 
     def on_show_view(self):
         """Called when this view becomes active."""
         # Enable the UIManager to capture mouse events/clicks
         self.manager.enable()
+        self.manager.clear()
         arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
 
         # Create a layout structure to hold our elements
@@ -43,23 +53,51 @@ class MainMenuView(arcade.View):
         )
         v_box.add(title_label)
 
-        # Create a styled "Start Game" button
-        start_button = arcade.gui.UIFlatButton(text="Start Game", width=200)
-        v_box.add(start_button)
+        # One row per color: color, name, and button for cycling Human to AI to Off
+        for index, (name, color) in enumerate(PLAYER_SETUPS):
+            row = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+            row.add(arcade.gui.UISpace(width=40, height=40, color=color))
+            row.add(arcade.gui.UILabel(text=name, font_size=20, width=110,
+                                       text_color=arcade.color.WHITE))
+            kind_button = arcade.gui.UIFlatButton(text=self.kinds[index].value, width=140)
+            kind_button.event("on_click")(self._make_cycle_handler(index, kind_button))
+            row.add(kind_button)
+            v_box.add(row)
 
-        # Assign an action handler to the button's click event
-        @start_button.event("on_click")
-        def on_click_start(_event):
-            # Instantiate the game view, set it up, and switch to it
-            game_view = RiskGame()
-            game_view.setup(2)
-            self.window.show_view(game_view)
+        self.error_label.text = ""
+        v_box.add(self.error_label)
+
+        start_button = arcade.gui.UIFlatButton(text="Start Game", width=200)
+        start_button.event("on_click")(self._on_start)
+        v_box.add(start_button)
 
         # Center the v_box within the anchor layout
         anchor_layout.add(v_box, anchor_x="center", anchor_y="center")
 
         # Add our layout to the UIManager
         self.manager.add(anchor_layout)
+
+    def _make_cycle_handler(self, index, button):
+        """Makes click handler to cycle a color's setting."""
+        order = [PlayerKind.HUMAN, PlayerKind.AI, PlayerKind.OFF]
+
+        def on_click(_event):
+            self.kinds[index] = order[(order.index(self.kinds[index]) + 1) % len(order)]
+            button.text = self.kinds[index].value
+        return on_click
+
+    def _on_start(self, _event):
+        """Validate selections and start game."""
+        playing = [k for k in self.kinds if k != PlayerKind.OFF]
+        if len(playing) < MIN_PLAYERS:
+            self.error_label.text = f"Select at least {MIN_PLAYERS} players"
+            return
+        if PlayerKind.HUMAN not in playing:
+            self.error_label.text = "Make at least one player Human"
+            return
+        game_view = RiskGame()
+        game_view.setup(list(self.kinds))
+        self.window.show_view(game_view)
 
     def on_hide_view(self):
         """Called when switching away from this view."""

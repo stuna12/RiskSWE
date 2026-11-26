@@ -515,6 +515,16 @@ class GameState:
         if defender is None or defender.controlled_territories(self.territories):
             return
         self.players.remove(defender)
+        self.armies_remaining.pop(defender, None)
+
+        # conqueror takes eliminated player cards
+        conqueror = self.turn.player
+        if conqueror is not None:
+            for card in defender.hand.cards:
+                conqueror.hand.add_card(card)
+        defender.hand.cards.clear()
+        defender.hand.components.clear()
+
         if len(self.players) == 1:
             self.turn.stage = Stage.GAME_OVER
 

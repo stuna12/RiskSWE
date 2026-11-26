@@ -1,6 +1,7 @@
 # pylint: disable=C0114, C0116
 import math
 import random
+from enum import Enum
 import arcade
 from arcade.types import Color
 from artificial_player import ArtificialPlayer
@@ -16,7 +17,21 @@ DEFAULT_COLOR = arcade.color.COOL_GREY
 PLAYER_SETUPS = [
     ("Blue", arcade.color.BLUE),
     ("Red", arcade.color.RED),
+    ("Green", arcade.color.FOREST_GREEN),
+    ("Purple", arcade.color.PURPLE),
+    ("Orange", arcade.color.ORANGE),
+    ("Black", arcade.color.BLACK),
 ]
+
+MIN_PLAYERS = 2
+MAX_PLAYERS = len(PLAYER_SETUPS)
+
+
+class PlayerKind(Enum):
+    """What controls a color in game."""
+    HUMAN = "Human"
+    AI = "AI"
+    OFF = "Off"
 
 # Turn phases: reinforce first, then attack
 REINFORCE = "reinforce"
@@ -46,7 +61,7 @@ class RiskGame(arcade.View):
         self.state = GameState.from_file("edges.txt", True)
         self.owner: Player # The owner of the current view
 
-    def setup(self, player_count: int):
+    def setup(self, kinds):
         with open("relpos.txt", "r", encoding="utf-8") as file:
             for (i, line) in enumerate(file.readlines()):
                 rx, ry = line.split(", ")
@@ -78,19 +93,28 @@ class RiskGame(arcade.View):
             ),
         }
 
-        # create & shuffle set of cards
+        self.setup_players(kinds)
 
-        if player_count == 2:
-            self.two_player_setup()
-        else:
-            raise NotImplementedError("Only the 2-player setup is implemented so far")
+    def setup_players(self, kinds):
+        """Create the players chosen on main menu. Colors set to OFF are left out."""
+        chosen = [(name, color, kind)
+                  for (name, color), kind in zip(PLAYER_SETUPS, kinds)
+                  if kind != PlayerKind.OFF]
 
-    def two_player_setup(self):
-        # Both players are human for now, swap one for ArtificialPlayer later
-        # start_play shuffles the turn order and deals the territories randomly
-        self.state.add_player(Player(PLAYER_SETUPS[0][1], PLAYER_SETUPS[0][0]))
-        self.state.add_player(ArtificialPlayer(PLAYER_SETUPS[1][1], PLAYER_SETUPS[1][0]))
-        self.owner = self.state.players[0]
+        # Check for 2 player setup to use no wildcard rules
+        self.state = GameState.from_file("edges.txt", len(chosen) == 2)
+
+        humans = []
+        for name, color, kind in chosen:
+            if kind == PlayerKind.HUMAN:
+                player = Player(color, name)
+                humans.append(player)
+            else:
+                player = ArtificialPlayer(color, name)
+            self.state.add_player(player)
+
+        # Make sure owner starts as human for refresh_buttons
+        self.owner = humans[0]
         self.state.start_play()
 
         self.refresh_buttons()
