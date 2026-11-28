@@ -48,10 +48,9 @@ class ArtificialPlayer(Player):
         return pair[0].armies - 1 - pair[1].armies
 
 
-    def reinforce(self, troops: int, territories: list[Country]) -> list[Country]:
+    def reinforce(self, troops: int, territories: list[Country]) -> dict[Country, int]:
         """
-        Returns a list of territories in which one troop will be added to. 
-        Some territories can appear more than once.
+        Returns a dictionary of territories in which troops will be added to.
         """
         mine = self.controlled_territories(territories)
 
@@ -60,15 +59,23 @@ class ArtificialPlayer(Player):
             if any(territories[i].owner != self for i in territory.adj)
         ]
 
-        placements = []
+        priority = []
         for _ in range(troops):
             best = border[0]
             for territory in border:
-                if (self.reinforcement_priority(territory, territories, placements)
-                        > self.reinforcement_priority(best, territories, placements)):
+                if (self.reinforcement_priority(territory, territories, priority)
+                        > self.reinforcement_priority(best, territories, priority)):
                     best = territory
 
-            placements.append(best)
+            priority.append(best)
+
+        placements = {}
+
+        for country in priority:
+            if country in placements.keys():
+                placements[country] += 1
+            else:
+                placements[country] = 1
 
         return placements
 
