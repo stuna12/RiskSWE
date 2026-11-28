@@ -200,18 +200,11 @@ class RiskGame(arcade.View):
                     self.state.select_territory(self.owner, i)
                     return #exit before processing all buttons
 
-            # no cards in hand means nothing to select, avoid dividing by zero
-            if not self.owner.hand.cards:
-                return
-
-            height = self.window.height / 10
-            low = self.window.width * 2 / 5
-            which_hovered = int((self.mouse_pos[0] - low) //
-                                (self.window.width / 5 / len(self.owner.hand.cards)))
-            if self.mouse_pos[1] > self.window.height/15 + height / 2:
-                which_hovered = -1
-
-            self.state.select_card(self.owner, which_hovered)
+            # use same card bounds hand is drawn with
+            self.owner.hand.check_hover(x, y)
+            which_hovered = self.owner.hand.hovered()
+            if which_hovered != -1:
+                self.state.select_card(self.owner, which_hovered)
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         self.mouse_pos = (x, y)
@@ -424,7 +417,7 @@ class RiskGame(arcade.View):
 
         # draw tooltips over top of the cards
         hovered = self.owner.hand.hovered()
-        if hovered == -1:
+        if hovered == -1 or hovered >= len(self.owner.hand.cards):
             return
 
         card = self.owner.hand.cards[hovered]

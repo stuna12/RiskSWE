@@ -35,6 +35,13 @@ class Stage(Enum):
 INFANTRY_COUNT = [0,0,40,35,30,25,20]
 
 
+def trade_bonus(sets_traded):
+    """Calculates armies for nth set trade in (4, 6, 8, 10, 12, 15, then +5 each)."""
+    if sets_traded <= 5:
+        return 2 + 2 * sets_traded
+    return 15 + 5 * (sets_traded - 6)
+
+
 @dataclass
 class TurnState:
     """Whose turn it is, which stage they are in, and what they have selected."""
@@ -255,40 +262,25 @@ class GameState:
         return True
 
     def selectable_cards(self, player: Player) -> list[int]:
-        # wildcards are always selectable.
-        if player != self.turn.player or \
-            ((not player.hand.can_use()) or len(self.turn.selected_cards) == 3):
+        """Indices of cards that can be added to current selection
+        to build valid set."""
+        if player != self.turn.player or self.turn.stage != Stage.TURN_IN_CARDS:
             return []
 
-        # two are selected
-        if len(self.turn.selected_cards) == 2:
-            ci1, ci2 = self.turn.selected_cards[0:2]
-            # either are a wildcard
-            if player.hand.cards[ci1].wildcard or player.hand.cards[ci2].wildcard:
-                return [i for i in range(len(player.hand.cards)) if i not in (ci1, ci2)]
-            # same armies
-            if player.hand.cards[ci1].army == player.hand.cards[ci2].army:
-                return [i for i in range(len(player.hand.cards)) if
-                        i not in (ci1, ci2) and (player.hand.cards[i].army == \
-                            player.hand.cards[ci1].army or player.hand.cards[i].wildcard)]
-            # different armies
-            return [i for i in range(len(player.hand.cards)) if
-                    i not in (ci1, ci2) and (player.hand.cards[i].wildcard or
-                    (player.hand.cards[i].army not in (
-                        player.hand.cards[ci1].army, player.hand.cards[ci2].army)))]
+        chosen = set(self.turn.selected_cards)
+        if len(chosen) >= 3:
+            return []
 
-        return [i for i in range(len(player.hand.cards)) if i not in (self.turn.selected_cards)]
-
-
-    # def auto_use_cards(self, player: Player):
-    #     if player != self.turn.player or not player.hand.can_use():
-    #         return
-
-    #     #if has a wildcard:
-
+        selectable = set()
+        for combo in player.hand.valid_sets():
+            if chosen <= set(combo):
+                for i in combo:
+                    if i not in chosen:
+                        selectable.add(i)
+        return sorted(selectable)
 
     def select_card(self, player: Player, card: int):
-        if player != self.turn.player:
+        if player != self.turn.player or self.turn.stage != Stage.TURN_IN_CARDS:
             return
 
         # deselecting a card
@@ -302,18 +294,13 @@ class GameState:
 
         self.turn.selected_cards.append(card)
 
-        # if 3 have been selected, submit
+        # if 3 have been selected, trade them in
         if len(self.turn.selected_cards) == 3:
-            cards = [x for x in player.hand.cards if
-                        player.hand.cards.index(x) in self.turn.selected_cards]
+            player.hand.remove_cards(self.turn.selected_cards)
             self.turn.selected_cards = []
-            for crd in cards:
-                player.hand.cards.remove(crd)
+            # trade bonus increases across whole game
             self.turn.cards_submitted += 1
-            self.armies_remaining[player] += \
-                2 + 2 * self.turn.cards_submitted + max(0, self.turn.cards_submitted - 5)
-
-
+            self.armies_remaining[player] += trade_bonus(self.turn.cards_submitted)
 
     def attack_roll(self, player: Player) -> bool:
         """Roll max dice for both sides. Called by the Roll button."""

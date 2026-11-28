@@ -73,4 +73,6 @@ class CardComponent:
 
     def check_hover(self, mouse_x: int, mouse_y: int):
         """Check if the mouse cursor is inside the card."""
-        self.is_hovered = self.bounds.point_in_rect((mouse_x, mouse_y))
+        # card lifts when hovered so: have to test against the whole range
+        hit_area = arcade.LBWH(self.bounds.left, 0, self.bounds.width, self.bounds.height * 1.25)
+        self.is_hovered = hit_area.point_in_rect((mouse_x, mouse_y))
