@@ -3,6 +3,11 @@
 import arcade
 
 
-def schedule(method, duration, *args):
-    """Call method(*args) after duration seconds"""
-    arcade.schedule_once(lambda _dt: method(*args), duration)
+def schedule(method, duration, *args, callback = None):
+    """Call method(*args) after duration seconds, and calls callback with the result as a parameter"""
+    def run(_dt):
+        result = method(*args)
+        if callback is not None:
+            callback(result)
+
+    arcade.schedule_once(run, duration)
