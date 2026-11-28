@@ -26,6 +26,9 @@ PLAYER_SETUPS = [
 MIN_PLAYERS = 2
 MAX_PLAYERS = len(PLAYER_SETUPS)
 
+CAMERA_ZOOM = 1.5
+CAMERA_SPEED = 5.0
+
 
 class PlayerKind(Enum):
     """What controls a color in game."""
@@ -60,6 +63,9 @@ class RiskGame(arcade.View):
         self.action_buttons = {}
         self.state = GameState.from_file("edges.txt", True)
         self.owner: Player # The owner of the current view
+
+        self.camera = arcade.Camera2D()
+        self.gui_camera = arcade.Camera2D()
 
     def setup(self, kinds):
         with open("relpos.txt", "r", encoding="utf-8") as file:
@@ -209,22 +215,55 @@ class RiskGame(arcade.View):
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         self.mouse_pos = (x, y)
+        world_x, world_y = self.camera.unproject((x, y))[:2]
+
         for button in self.buttons:
-            button.check_hover(x, y)
+            button.check_hover(int(world_x), int(world_y))
+
         for action_button in self.action_buttons.values():
             action_button.check_hover(x, y)
+
         self.owner.hand.check_hover(x,y)
+
+    def on_update(self, delta_time):
+        zoom = 1.0
+        x, y = self.window.width / 2, self.window.height / 2
+
+        selected = self.state.turn.selected
+
+        if selected is not None:
+            circle = self.buttons[selected.type.value].circle
+            zoom = CAMERA_ZOOM
+
+            half_width = self.window.width / (2 * zoom)
+            half_height = self.window.height / (2 * zoom)
+
+            x = min(max(circle.x, half_width), self.window.width - half_width)
+            y = min(max(circle.y, half_height), self.window.height - half_height)
+
+        ease = min(CAMERA_SPEED * delta_time, 1.0)
+        self.camera.position = (self.camera.position[0] + (x - self.camera.position[0]) * ease,
+                                self.camera.position[1] + (y - self.camera.position[1]) * ease)
+
+        self.camera.zoom += (zoom - self.camera.zoom) * ease
+
+        self.on_mouse_motion(self.mouse_pos[0], self.mouse_pos[1], 0, 0)
 
     def on_draw(self):
         """ Render the screen. """
         self.clear()
         assert self.map is not None
+
+        self.camera.use()
+
         arcade.draw_texture_rect(self.map,
                     arcade.LBWH(0,0,self.window.width, self.window.height))
         self.refresh_buttons()
         self.update_highlights()
         for button in self.buttons:
             button.draw()
+
+        self.gui_camera.use()
 
         if self.action_buttons:
             flex_button = self.action_buttons["flex_button"]
