@@ -21,21 +21,35 @@ class Hand:
         self.components.append(CardComponent(card))
         self.arranged = False
 
+    def is_set(self, i, j, k):
+        """Checks a trio. Returns True if cards at input indices are all same type,
+        all different, or include wildcard."""
+        trio = [self.cards[i], self.cards[j], self.cards[k]]
+        if any(card.wildcard for card in trio):
+            return True
+        return len({card.army for card in trio}) in (1, 3)
+
+    def valid_sets(self):
+        """Returns every combination of three card indices that form tradeable sets."""
+        sets = []
+        n = len(self.cards)
+        for i in range(n):
+            for j in range(i + 1, n):
+                for k in range(j + 1, n):
+                    if self.is_set(i, j, k):
+                        sets.append((i, j, k))
+        return sets
+
     def can_use(self) -> bool:
         """Return True if the hand contains a set that can be traded in."""
-        # must have at least 3 cards
-        if len(self.cards) < 3:
-            return False
+        return bool(self.valid_sets())
 
-        # either has a wildcard, three of one type, or at least one of each
-        has_wildcard = False
-        types: list[int] = [0,0,0]
-        for card in self.cards:
-            if card.wildcard:
-                has_wildcard = True
-            else:
-                types[card.army] += 1
-        return has_wildcard or any(t >= 3 for t in types) or all(t >= 1 for t in types)
+    def remove_cards(self, indices):
+        """Remove cards and GUI components by index. Keeps lists in sync."""
+        for i in sorted(set(indices), reverse=True):
+            del self.cards[i]
+            del self.components[i]
+        self.arranged = False
 
     def has_wildcard(self) -> bool:
         """Return True if hand contains at least one wildcard"""
@@ -63,7 +77,7 @@ class Hand:
         if not self.arranged:
             return -1
         for i, comp in enumerate(self.components):
-            if comp.is_hovered:
+            if comp.is_hovered and i < len(self.cards):
                 return i
         return -1
 
